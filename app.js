@@ -173,9 +173,10 @@
     if (!who) { $('who').focus(); toast('Add your name first, so the team knows who saved it.'); return; }
     if (isDemo) { store.set('ds-intake-demo', JSON.stringify(answersPayload())); S.dirty = false; S.savedAt = new Date().toISOString(); S.savedBy = who; setSaveState(); toast('Demo saved in this browser only.'); return; }
     $('b-save').disabled = true; $('b-save').textContent = 'Saving…';
-    api('save', { answers: answersPayload(), savedBy: who, quoteReady: a.quoteReady, specialistNeeded: a.specialistNeeded, quoteMissing: a.quoteMissing, flags: a.flags })
+    var answeredN = SPEC.sections.reduce(function (n, s) { return n + s.items.filter(itemAnswered).length; }, 0);
+    api('save', { answers: answersPayload(), savedBy: who, quoteReady: a.quoteReady, specialistNeeded: a.specialistNeeded, quoteMissing: a.quoteMissing, flags: a.flags, itemsAnswered: answeredN, recap: recapText() })
       .then(function (r) {
-        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); toast('Saved. Daniel gets a Slack DM in test mode.'); }
+        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); toast(r.hubspot === 'ok' ? 'Saved and sent to HubSpot (note, deal fields' + (r.company_updated ? ', company SIS/CRM' : '') + ').' : 'Saved here, but HubSpot did not accept the update. Daniel has been notified.'); }
         else toast(r.error || 'Save failed.');
       }).catch(function () { toast('Save failed: network error.'); })
       .then(function () { $('b-save').disabled = false; $('b-save').textContent = 'Save'; setSaveState(); });
@@ -189,7 +190,7 @@
     api('build').then(function (r) { toast(r.ok ? 'Refresh started. Reload in about a minute; your answers are kept.' : (r.error || 'Refresh failed.')); }).catch(function () { toast('Refresh failed.'); }).then(function () { setTimeout(function () { $('b-refresh').disabled = false; }, 4000); });
   });
 
-  $('b-copy').addEventListener('click', function () {
+  function recapText() {
     var a = assessIntake(S.values), d = S.dossier, lines = [];
     lines.push('Sales intake: ' + ((d.institution || {}).name || '') + (d.deal && d.deal.stageLabel ? ' (' + d.deal.stageLabel + ')' : ''));
     lines.push(a.quoteReady ? 'Ready to quote: all five QUOTE items answered.' : 'Not ready to quote. Missing: ' + a.quoteMissing.map(function (q) { return 'item ' + q.slice(1); }).join(', ') + '.');
@@ -199,7 +200,10 @@
       if (parts.length || S.notes[it.id]) lines.push(it.n + '. ' + it.title + (S.confirmed[it.id] ? ' [confirmed]' : '') + '\n   ' + parts.join('; ') + (S.notes[it.id] ? '\n   Notes: ' + S.notes[it.id] : ''));
     }); });
     if (a.flags.length) { lines.push(''); lines.push('Flags:'); a.flags.forEach(function (f) { lines.push('- ' + (f.level === 'specialist' ? '[specialist] ' : '') + f.text); }); }
-    var text = lines.join('\n');
+    return lines.join('\n');
+  }
+  $('b-copy').addEventListener('click', function () {
+    var text = recapText();
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast('Recap copied. Paste it into HubSpot or Slack.'); }).catch(function () { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); toast('Recap copied.'); } catch (e) { toast('Copy failed.'); } ta.remove(); });
   });
 
