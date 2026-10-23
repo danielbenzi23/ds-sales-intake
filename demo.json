@@ -1,0 +1,31 @@
+{
+  "builtAt": "2026-10-23T14:05:00Z", "source": "demo",
+  "deal": { "id": "0", "name": "Example State University - Inbound", "url": "", "stageLabel": "Discovery", "ownerName": "Demo Rep", "ownerEmail": "" },
+  "institution": { "name": "Example State University", "domain": "example.edu", "fte": "9,800" },
+  "contacts": [ { "name": "Alex Rivera", "title": "Director of Transfer Admissions", "email": "" }, { "name": "Sam Lee", "title": "University Registrar", "email": "" } ],
+  "summary": "Example State wants a student-facing transfer credit portal for undergraduates before the Fall 2027 cycle. They run Banner on-prem with Slate and keep equivalencies in a Banner table plus TES. The registrar wants evaluated coursework written back to Banner eventually, but the admissions director is fine going live student-facing first.",
+  "openQuestions": [ "What does live mean to you: students can use it, or everything wired into Banner?", "Is coursework written back to Banner a buying reason, or a later phase?", "Who signs, by name and title, and does anyone above them have to touch it?" ],
+  "risks": [ "The registrar and the admissions director described write-back differently; confirm before quoting.", "Two of the top feeders are California community college districts." ],
+  "sources": [
+    { "ref": "T1", "type": "transcript", "title": "Example State | DegreeSight - Discovery", "date": "2026-10-14" },
+    { "ref": "E1", "type": "email", "title": "Re: follow up on transfer portal", "date": "2026-10-16" },
+    { "ref": "H1", "type": "hubspot", "title": "Company properties: Example State University" },
+    { "ref": "S1", "type": "starbridge", "title": "Starbridge: Example State University" }
+  ],
+  "counts": { "transcripts": 1, "emails": 3, "meetings": 2, "notes": 1, "calls": 0, "zoom": 1, "starbridge": 1 },
+  "fields": {
+    "pop_day1": { "value": ["Undergraduate"], "confidence": "high", "evidence": [ { "ref": "T1", "quote": "For launch it's really our undergrad transfer population, grad can wait." } ] },
+    "sis_name": { "value": "Banner", "confidence": "high", "evidence": [ { "ref": "T1", "quote": "We're on Banner, Banner 9, hosted here on campus." } ] },
+    "sis_hosting": { "value": "On-prem", "confidence": "high", "evidence": [ { "ref": "T1", "quote": "We're on Banner, Banner 9, hosted here on campus." } ] },
+    "sis_version": { "value": "Banner 9", "confidence": "high", "evidence": [ { "ref": "T1", "quote": "We're on Banner, Banner 9, hosted here on campus." } ] },
+    "audit_engine": { "value": "DegreeWorks", "confidence": "medium", "evidence": [ { "ref": "H1", "quote": "degree_audit_system: DegreeWorks" } ] },
+    "crm_name": { "value": "Slate", "confidence": "high", "evidence": [ { "ref": "E1", "quote": "Admissions lives in Slate, so anything you push should land there." } ] },
+    "wb_leads": { "value": "Wanted", "confidence": "medium", "evidence": [ { "ref": "E1", "quote": "Admissions lives in Slate, so anything you push should land there." } ] },
+    "wb_coursework": { "value": "Wanted", "confidence": "medium", "evidence": [ { "ref": "T1", "quote": "Eventually I'd love the evaluated courses to show up in Banner without retyping." } ] },
+    "golive_gate": { "value": "Student-facing first, SIS after", "confidence": "medium", "evidence": [ { "ref": "T1", "quote": "If students can see it for fall, the Banner piece can come after." } ] },
+    "rules_source": { "value": ["SIS table", "TES"], "confidence": "high", "evidence": [ { "ref": "T1", "quote": "Most rules are in Banner, and we keep some in TES." } ] },
+    "feeder_states": { "value": ["CA"], "confidence": "low", "evidence": [ { "ref": "S1", "quote": "Top feeder institutions include two California community college districts." } ] },
+    "live_driver": { "value": "Fall 2027 application cycle opens in August", "confidence": "medium", "evidence": [ { "ref": "T1", "quote": "Our fall application opens in August, that's the date I care about." } ] }
+  },
+  "aiOk": true
+}

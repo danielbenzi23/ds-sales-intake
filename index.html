@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sales Intake · DegreeSight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="logo">Degree<span>Sight</span><small>Sales intake</small></div>
+  <div class="deal"><h1 id="d-title">Loading intake…</h1><div class="meta" id="d-meta"></div></div>
+  <div class="top-actions">
+    <input class="who" id="who" placeholder="Your name" aria-label="Your name">
+    <button class="btn" id="b-refresh" type="button" title="Re-read HubSpot, transcripts and Starbridge">Refresh sources</button>
+    <button class="btn" id="b-copy" type="button">Copy recap</button>
+    <span class="save-state" id="save-state"></span>
+    <button class="btn primary" id="b-save" type="button">Save</button>
+  </div>
+</div></header>
+<div class="banner" id="banner"></div>
+<div id="app" class="loading">Loading…</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="spec.js"></script>
+<script src="assess.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

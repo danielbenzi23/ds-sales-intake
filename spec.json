@@ -1,0 +1,190 @@
+{
+  "version": "2.1",
+  "source": "The Sales Checklist: Before You Quote (v2.1, Oct 16 2026) + Backup: If You Can Get Them, Great",
+  "sections": [
+    {
+      "id": "populations", "title": "Populations and documents",
+      "items": [
+        { "id": "q1", "n": 1, "quote": true, "title": "Which students, and do they run on different rules?",
+          "hint": "Different rules, catalogs, or minimum grades by group = a second portal, a second price, 3 months becomes 6 to 9. Two CRMs forced two portals at JWU.",
+          "say": "Which students will run through this on day one: undergrad only, or grad and online too? And do any of those groups follow different rules, different catalogs, or different minimum grades?",
+          "fields": [
+            { "key": "pop_day1", "label": "Day one populations", "type": "multi", "options": ["Undergraduate", "Graduate", "Online", "Dual enrollment", "Other"] },
+            { "key": "pop_diff_rules", "label": "Different rules, catalogs, or minimum grades by group", "type": "choice", "options": ["No", "Yes", "Unknown"] },
+            { "key": "pop_same_systems", "label": "Every population on the same SIS and CRM", "type": "choice", "options": ["Yes", "No", "Unknown"] }
+          ] },
+        { "id": "q2", "n": 2, "quote": false, "title": "High school transcripts: in or out?",
+          "hint": "GPA as printed is standard; recalculated GPA, custom fields, HS push to the SIS are not. Exam score reports (AP, CLEP) are keyed in, not read.",
+          "say": "Are high school or dual-enrollment transcripts part of this, or college only? If in, do you need anything beyond what's printed, like a recalculated GPA?",
+          "fields": [
+            { "key": "hs_scope", "label": "High school transcripts", "type": "choice", "options": ["Out", "In: student-uploaded", "In: bulk feed", "Unknown"] },
+            { "key": "hs_beyond_printed", "label": "Needs more than GPA as printed (recalculated GPA, custom fields, HS push)", "type": "choice", "options": ["No", "Yes", "Unknown"] }
+          ] },
+        { "id": "q3", "n": 3, "quote": false, "title": "Military credit: award it, or read it?",
+          "hint": "Award credit against rules the school keys in: today. Reading the JST itself: roadmap, no date, no price.",
+          "say": "Do you take military credit? Do you want to key in what a JST is worth, the way you do for AP and CLEP, or do you want us to read the JST itself?",
+          "fields": [
+            { "key": "military", "label": "Military credit", "type": "choice", "options": ["Not needed", "Award against keyed rules", "Read the JST (roadmap)", "Unknown"] }
+          ] },
+        { "id": "q4", "n": 4, "quote": false, "title": "International, PLA, and the rest: named and excluded out loud",
+          "hint": "We are not NACES/ACE; non-IPEDS schools are not in the database.",
+          "fields": [
+            { "key": "eval_type", "label": "Evaluation type", "type": "choice", "options": ["Unofficial pre-application reviews", "Official post-deposit evaluations", "Both", "Unknown"] },
+            { "key": "intl_named", "label": "Excluded out loud", "type": "multi", "options": ["Foreign transcripts / WES / ECE", "Prior learning, portfolio, certifications", "Non-IPEDS institutions"] }
+          ] }
+      ]
+    },
+    {
+      "id": "systems", "title": "Systems",
+      "items": [
+        { "id": "q5", "n": 5, "quote": true, "title": "SIS, hosting, and anything being replaced",
+          "hint": "Read it back to them (CMU was SAP, not Banner). Colleague SaaS cannot take a coursework push. Migration or sunset inside 18 months means the integration is built twice.",
+          "say": "What's your SIS, and is it on-prem, cloud-hosted, or Ellucian SaaS? Anything being migrated or replaced in the next 18 months?",
+          "fields": [
+            { "key": "sis_name", "label": "SIS", "type": "choice", "options": ["Colleague", "Banner", "PeopleSoft", "Workday Student", "Jenzabar J1", "Jenzabar CX", "SAP", "Anthology / CampusNexus / CampusVue", "Ellucian PowerCampus", "Homegrown or other", "Unknown"] },
+            { "key": "sis_hosting", "label": "Hosting", "type": "choice", "options": ["On-prem", "Cloud-hosted", "Ellucian SaaS", "Vendor SaaS", "Unknown"] },
+            { "key": "sis_version", "label": "Version", "type": "text" },
+            { "key": "sis_migration", "label": "Migration or sunset inside 18 months", "type": "choice", "options": ["No", "Yes", "Unknown"] },
+            { "key": "audit_engine", "label": "Degree audit engine", "type": "choice", "options": ["DegreeWorks", "uAchieve / DARS", "Stellic", "Built into SIS", "None", "Unknown"] }
+          ] },
+        { "id": "q6", "n": 6, "quote": false, "title": "CRM, and which edition",
+          "hint": "Slate and standard Salesforce are routine. Education Cloud, Element 451, TargetX, HubSpot: install base of zero or one.",
+          "say": "What CRM does admissions run on, and which edition?",
+          "fields": [
+            { "key": "crm_name", "label": "CRM", "type": "choice", "options": ["Slate", "Salesforce (standard)", "Salesforce Education Cloud", "TargetX", "Element 451", "HubSpot", "Ellucian Recruit", "Radius", "EAB Navigate", "Generic SFTP CRM", "None", "Unknown"] },
+            { "key": "crm_edition", "label": "Edition / notes", "type": "text" }
+          ] },
+        { "id": "q7", "n": 7, "quote": true, "title": "What they expect written back",
+          "hint": "We do reads plus create-only pushes to Colleague on-prem, Banner, PeopleSoft, nothing else yet. Documents landing in an imaging system (Perceptive, eTrieve, OnBase) is a separate project.",
+          "say": "When an evaluation is approved, do you expect it to be written into your SIS, or is this for your team to see and act on?",
+          "fields": [
+            { "key": "wb_leads", "label": "Leads out to CRM", "type": "choice", "options": ["Not needed", "Wanted", "Required for go-live", "Unknown"] },
+            { "key": "wb_transcripts_in", "label": "Transcripts in", "type": "choice", "options": ["Not needed", "Wanted", "Required for go-live", "Unknown"] },
+            { "key": "wb_coursework", "label": "Evaluated coursework to the SIS", "type": "choice", "options": ["Not needed", "Wanted", "Required for go-live", "Unknown"] },
+            { "key": "wb_rules", "label": "Equivalency rules back to the SIS", "type": "choice", "options": ["Not needed", "Wanted", "Required for go-live", "Unknown"] },
+            { "key": "wb_mode", "label": "Create-only or update existing", "type": "choice", "options": ["Create-only", "Update existing", "Unknown"] },
+            { "key": "wb_imaging", "label": "Documents into an imaging system", "type": "choice", "options": ["No", "Yes (separate project)", "Unknown"] }
+          ] },
+        { "id": "q8", "n": 8, "quote": true, "title": "Does integration gate go-live?",
+          "hint": "Student-facing first and connect the SIS after (Cornerstone, CMU), or wait for the push (Shenandoah waited months). The answer is the go-live line in the SOW.",
+          "say": "Do you need that working before students can use it, or can we go live student-facing and connect the SIS after?",
+          "fields": [
+            { "key": "golive_gate", "label": "Go-live line", "type": "choice", "options": ["Student-facing first, SIS after", "Wait for the integration", "Unknown"] }
+          ] }
+      ]
+    },
+    {
+      "id": "data", "title": "Data reality",
+      "items": [
+        { "id": "q9", "n": 9, "quote": false, "title": "Where the equivalency rules live, and do they export",
+          "hint": "TES, Transferology, CollegeSource: we import under their license, never write back. No tables to hand over (Otis, St. John's) puts rule-building on the timeline.",
+          "say": "Do your equivalency rules exist somewhere we can export today, or do they still have to be built?",
+          "fields": [
+            { "key": "rules_source", "label": "Where the rules live", "type": "multi", "options": ["SIS table", "TES", "Transferology", "CollegeSource", "Spreadsheets", "Tribal / someone's head"] },
+            { "key": "rules_exportable", "label": "Exportable today", "type": "choice", "options": ["Yes", "No, they must be built", "Unknown"] }
+          ] },
+        { "id": "q10", "n": 10, "quote": false, "title": "Grade scale, terms, and feeders",
+          "hint": "District or multi-campus transcripts from top feeders (CA, AZ, TX, KY, IN, VA): get three real samples before contract.",
+          "fields": [
+            { "key": "grade_scale_file", "label": "Full grade scale received as a file", "type": "choice", "options": ["Yes", "No", "Unknown"] },
+            { "key": "min_grade_uniform", "label": "Minimum transfer grade is uniform", "type": "choice", "options": ["Yes", "No, varies by program", "Unknown"] },
+            { "key": "calendar", "label": "Calendar", "type": "choice", "options": ["Semester", "Quarter", "Other", "Unknown"] },
+            { "key": "feeder_states", "label": "Top feeders in district states", "type": "multi", "options": ["CA", "AZ", "TX", "KY", "IN", "VA"] },
+            { "key": "feeder_samples", "label": "Three real feeder samples collected (SFTP, never email)", "type": "choice", "options": ["Yes", "No", "Not needed"] }
+          ] }
+      ]
+    },
+    {
+      "id": "people", "title": "People and authority",
+      "items": [
+        { "id": "q11", "n": 11, "quote": false, "title": "Who signs, and who is above them",
+          "hint": "Name and title, confirmed; anyone above them who has to touch it (USG needed a Vice Chancellor).",
+          "say": "Who signs this, by name and title, and does anyone above them have to touch it?",
+          "fields": [
+            { "key": "signer", "label": "Signer (name, title)", "type": "text" },
+            { "key": "above_signer", "label": "Anyone above them who touches it", "type": "text" }
+          ] },
+        { "id": "q12", "n": 12, "quote": false, "title": "SIS and CRM administrators, by name",
+          "hint": "Who owns public DNS: internal IT or a third party (JWU stalled four times).",
+          "fields": [
+            { "key": "sis_admin", "label": "SIS administrator", "type": "text" },
+            { "key": "crm_admin", "label": "CRM administrator", "type": "text" },
+            { "key": "dns_owner", "label": "Public DNS owner", "type": "choice", "options": ["Internal IT", "Third party", "Unknown"] },
+            { "key": "tech_call", "label": "Admins can join a technical call before signature", "type": "choice", "options": ["Yes", "No", "Unknown"] }
+          ] }
+      ]
+    },
+    {
+      "id": "timing", "title": "Timing",
+      "items": [
+        { "id": "q13", "n": 13, "quote": true, "title": "What \"live\" means, the real date, and what competes",
+          "hint": "Students can use it, or everything wired into the SIS: they are two dates. Best clean Inbound is ten weeks from kickoff; nothing has ever been 30 days.",
+          "say": "When you say live, do you mean students can use it, or everything is wired into your SIS? What's the date that actually matters, and is there an IT freeze, a website relaunch, or another project competing for your IT in that window?",
+          "fields": [
+            { "key": "live_definition", "label": "\"Live\" means", "type": "choice", "options": ["Students can use it", "Everything wired into the SIS", "Unknown"] },
+            { "key": "live_date", "label": "The date that matters", "type": "date" },
+            { "key": "live_driver", "label": "What drives that date (term start, publish date, incumbent end)", "type": "text" },
+            { "key": "competing", "label": "IT freeze, relaunch, or competing projects", "type": "text" }
+          ] },
+        { "id": "q14", "n": 14, "quote": false, "title": "What we are replacing, and how much of it",
+          "hint": "Public equivalency search and historical catalog lookup we do not have.",
+          "fields": [
+            { "key": "incumbent", "label": "Incumbent tool or process", "type": "text" },
+            { "key": "parity", "label": "Scope", "type": "choice", "options": ["Nothing replaced", "Defined subset", "Full parity expected", "Unknown"] },
+            { "key": "incumbent_renewal", "label": "Incumbent renewal date and cost", "type": "text" }
+          ] },
+        { "id": "q15", "n": 15, "quote": false, "title": "Security and accessibility reviews",
+          "hint": "Owner, date, and whether any of it gates go-live (TCU forced an emergency release).",
+          "fields": [
+            { "key": "security_reviews", "label": "Reviews required", "type": "multi", "options": ["HECVAT", "SOC 2", "VPAT", "Pen test", "DNS and email-auth review"] },
+            { "key": "security_owner", "label": "Owner and date", "type": "text" },
+            { "key": "security_gates", "label": "Gates go-live", "type": "choice", "options": ["No", "Yes", "Unknown"] }
+          ] }
+      ]
+    },
+    {
+      "id": "commercial", "title": "Commercial hygiene",
+      "items": [
+        { "id": "q16", "n": 16, "quote": false, "title": "Everything in the proposal is live today",
+          "hint": "Generally available and demoable now; roadmap items get a roadmap label and no date.",
+          "fields": [
+            { "key": "all_ga", "label": "Every proposed feature is GA and demoable today", "type": "choice", "options": ["Confirmed", "Roadmap items present", "Not checked"] },
+            { "key": "roadmap_items", "label": "Roadmap items (labeled, no date)", "type": "text" }
+          ] },
+        { "id": "q17", "n": 17, "quote": false, "title": "The non-parity line is in writing",
+          "hint": "\"We will not match your SIS one-for-one; we are not the system of record.\" Verbal was worth nothing at GMU.",
+          "say": "One thing I want in writing so nobody is surprised: we will not match your SIS one-for-one. We read from it and write new records to it; we are not the system of record.",
+          "fields": [
+            { "key": "nonparity_written", "label": "Non-parity line sent in writing", "type": "choice", "options": ["Yes", "Verbal only", "Not yet"] }
+          ] },
+        { "id": "q18", "n": 18, "quote": false, "title": "Exclusions named out loud, with a yes on record",
+          "say": "Before we go further, let me name what's not in this: international evaluations, reverse transfer, Parchment or Clearinghouse feeds, reading military transcripts, a second portal for grad.",
+          "fields": [
+            { "key": "exclusions_yes", "label": "Exclusions with a yes on record", "type": "multi", "options": ["International evaluations", "Reverse transfer", "Parchment or Clearinghouse feeds", "Reading military transcripts", "A second portal for grad"] }
+          ] }
+      ]
+    }
+  ],
+  "kickoff": {
+    "title": "If you can get them, great (Partner Success asks these at kickoff)",
+    "note": "None of these stop a deal. If one comes up naturally, write it down so PS starts ahead. Do not slow a deal or spook a registrar to chase them.",
+    "fields": [
+      { "key": "k_rules_count", "label": "How many rules, and how far back", "type": "text" },
+      { "key": "k_rules_holder", "label": "Rules documented or tribal, and who holds them", "type": "text" },
+      { "key": "k_cleanup", "label": "Who cleans up old rules (default: us)", "type": "choice", "options": ["DegreeSight", "The school insists", "Unknown"] },
+      { "key": "k_grade_symbols", "label": "Odd grade symbols (S, P, CR, NP, W)", "type": "text" },
+      { "key": "k_one_to_many", "label": "Lecture-plus-lab and other one-to-many rules", "type": "text" },
+      { "key": "k_exam_credit", "label": "Exam credit: which exams, by-major rules, score file source", "type": "text" },
+      { "key": "k_course_code", "label": "Course code format (CST130 vs CST-130)", "type": "text" },
+      { "key": "k_external_ids", "label": "External schools carry IPEDS / CEEB ids or an internal code", "type": "text" },
+      { "key": "k_gen_ed", "label": "Gen-ed by attributes or a statewide agreement (MTA, Cal-GETC, MnTC, NJ)", "type": "text" },
+      { "key": "k_degree_reqs", "label": "Where degree requirements live and whether fully encoded (Insight)", "type": "text" },
+      { "key": "k_sso_email", "label": "Who owns DNS, SSO, and email authentication", "type": "text" },
+      { "key": "k_approvers", "label": "Who approves a new equivalency, and do they need accounts", "type": "text" },
+      { "key": "k_other_users", "label": "Who else looks rules up (advisors, counselors, athletics)", "type": "text" },
+      { "key": "k_demo_seen", "label": "Daily user has seen a demo", "type": "choice", "options": ["Yes", "No", "Unknown"] },
+      { "key": "k_compelling_event", "label": "Compelling event (incumbent end, mandate, accreditation)", "type": "text" },
+      { "key": "k_tech", "label": "IP-restricted APIs, test refresh cadence, Ethos stood up", "type": "text" }
+    ]
+  }
+}
