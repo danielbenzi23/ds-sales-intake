@@ -2,8 +2,15 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
   var params = new URLSearchParams(location.search);
-  var DEAL = (params.get('deal') || '').replace(/[^0-9]/g, ''), TOKEN = (params.get('t') || '').replace(/[^a-z0-9]/gi, '');
-  var isDemo = !DEAL || !TOKEN;
+  // Deal comes from the path (/43820286731) or, for old links, from ?deal=. The token comes from ?t= the first
+  // time a link from Slack is opened and is then remembered in this browser, so /<deal_id> works on its own afterwards.
+  var pathDeal = (location.pathname.match(/^\/(\d+)\/?$/) || [])[1] || '';
+  var DEAL = (pathDeal || params.get('deal') || '').replace(/[^0-9]/g, '');
+  var tokenKey = 'ds-intake-token-' + DEAL;
+  var TOKEN = (params.get('t') || '').replace(/[^a-z0-9]/gi, '');
+  if (DEAL && !TOKEN) { try { TOKEN = localStorage.getItem(tokenKey) || ''; } catch (e) { TOKEN = ''; } }
+  var needsLink = !!DEAL && !TOKEN;
+  var isDemo = !DEAL;
   var S = { dossier: {}, values: {}, origin: {}, confirmed: {}, notes: {}, dirty: false, savedAt: null, savedBy: '' };
   var FIELDS = {}, ITEM_OF = {}, QUOTE_IDS = [];
   SPEC.sections.forEach(function (sec) { sec.items.forEach(function (it) { if (it.quote) QUOTE_IDS.push(it.id); it.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = it.id; }); }); });
@@ -200,9 +207,17 @@
     banner('info', '<b>Demo.</b> This is fictional data showing what a rep sees. Real intakes open from the Slack message with a link that carries the deal and a private token.');
     var demoSaved = null; try { demoSaved = JSON.parse(store.get('ds-intake-demo') || 'null'); } catch (e) { }
     load({ dossier: DEMO, answers: demoSaved || {} }, true);
+  } else if (needsLink) {
+    $('d-title').textContent = 'Sales intake';
+    $('b-save').disabled = true; $('b-refresh').disabled = true;
+    $('app').innerHTML = '<div class="loading">Open this deal once from its Slack message (the link carries a private key). After that, ' + esc(location.host) + '/' + esc(DEAL) + ' opens directly in this browser.</div>';
   } else {
     api('get').then(function (r) {
-      if (!r.ok) { $('app').innerHTML = '<div class="loading">' + esc(r.error || 'Could not load this intake.') + '</div>'; $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true; if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.'); return; }
+      if (r.ok) {
+        try { localStorage.setItem(tokenKey, TOKEN); } catch (e) { }
+        if (location.pathname !== '/' + DEAL || location.search) { try { history.replaceState(null, '', '/' + DEAL); } catch (e) { } }
+      }
+      if (!r.ok) { try { localStorage.removeItem(tokenKey); } catch (e) { } $('app').innerHTML = '<div class="loading">' + esc(r.error || 'Could not load this intake.') + '</div>'; $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true; if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.'); return; }
       load(r, false);
     }).catch(function () { $('app').innerHTML = '<div class="loading">Network error. Try again.</div>'; });
   }
