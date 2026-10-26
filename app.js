@@ -11,6 +11,7 @@
   if (DEAL && !TOKEN) { try { TOKEN = localStorage.getItem(tokenKey) || ''; } catch (e) { TOKEN = ''; } }
   var needsLink = !!DEAL && !TOKEN;
   var isDemo = !DEAL;
+  var START_VIEW = location.hash === '#pricing' ? 'pricing' : 'intake';
   var S = { dossier: {}, values: {}, origin: {}, confirmed: {}, notes: {}, dirty: false, savedAt: null, savedBy: '' };
   var FIELDS = {}, ITEM_OF = {}, QUOTE_IDS = [];
   SPEC.sections.forEach(function (sec) { sec.items.forEach(function (it) { if (it.quote) QUOTE_IDS.push(it.id); it.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = it.id; }); }); });
@@ -55,7 +56,7 @@
     S.savedAt = data.saved_at || saved.savedAt || null; S.savedBy = data.saved_by || '';
     var draft = !demo && store.get('ds-intake-draft-' + DEAL);
     if (draft) { try { var d = JSON.parse(draft); if (d && d.ts && (!S.savedAt || d.ts > Date.parse(S.savedAt))) { S.values = d.values || S.values; S.origin = d.origin || S.origin; S.confirmed = d.confirmed || S.confirmed; S.notes = d.notes || S.notes; if (d.pricing) S.pricing = d.pricing; S.dirty = true; } } catch (e) { } }
-    renderHeader(demo); renderApp(); DSCalc.load(S.pricing); renderSide(); setSaveState(); showView(location.hash === '#pricing' ? 'pricing' : 'intake');
+    renderHeader(demo); renderApp(); DSCalc.load(S.pricing); renderSide(); setSaveState(); showView(START_VIEW);
   }
 
   function renderHeader(demo) {
@@ -236,7 +237,7 @@
     api('get').then(function (r) {
       if (r.ok) {
         try { localStorage.setItem(tokenKey, TOKEN); } catch (e) { }
-        if (location.pathname !== '/' + DEAL || location.search) { try { history.replaceState(null, '', '/' + DEAL); } catch (e) { } }
+        if (location.pathname !== '/' + DEAL || location.search) { try { history.replaceState(null, '', '/' + DEAL + (START_VIEW === 'pricing' ? '#pricing' : '')); } catch (e) { } }
       }
       if (!r.ok) { try { localStorage.removeItem(tokenKey); } catch (e) { } $('app').innerHTML = '<div class="loading">' + esc(r.error || 'Could not load this intake.') + '</div>'; $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true; if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.'); return; }
       load(r, false);
