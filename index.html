@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/calc.css">
 </head>
 <body>
 <header class="top"><div class="top-in">
@@ -22,11 +23,14 @@
     <button class="btn primary" id="b-save" type="button">Save</button>
   </div>
 </div></header>
+<nav class="views" aria-label="Sections"><div class="views-in"><button type="button" data-view="intake" class="on">Sales intake</button><button type="button" data-view="pricing">Pricing calculator</button></div></nav>
 <div class="banner" id="banner"></div>
 <div id="app" class="loading">Loading…</div>
+<div id="pricing" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="/spec.js"></script>
 <script src="/assess.js"></script>
+<script src="/calc.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

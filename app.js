@@ -29,6 +29,21 @@
   function itemAnswered(it) { return it.fields.some(function (f) { return hasVal(S.values[f.key]) && S.values[f.key] !== 'Unknown'; }); }
   function srcByRef(ref) { return (S.dossier.sources || []).filter(function (s) { return s.ref === ref; })[0] || null; }
 
+  function saveDraft() { if (!isDemo) store.set('ds-intake-draft-' + DEAL, JSON.stringify({ ts: Date.now(), values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, pricing: DSCalc.state() })); }
+  function showView(v) {
+    $('app').hidden = v !== 'intake'; $('pricing').hidden = v !== 'pricing';
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-view') === v); });
+    if (v === 'pricing') DSCalc.render();
+    try { history.replaceState(null, '', location.pathname + (v === 'pricing' ? '#pricing' : '')); } catch (e) { }
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); window.scrollTo({ top: 0 }); }); });
+  DSCalc.mount({
+    values: function () { return S.values; }, dossier: function () { return S.dossier; }, assess: function () { return assessIntake(S.values); },
+    dirty: function () { S.dirty = true; setSaveState(); saveDraft(); }, save: function () { save(); },
+    who: function () { return $('who').value.trim(); }, needWho: function () { $('who').focus(); toast('Add your name first, so the team knows who approved it.'); },
+    goItem: function (id) { showView('intake'); var el = document.getElementById(id); if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }
+  });
+
   function load(data, demo) {
     S.dossier = data.dossier || {};
     var saved = data.answers || {};
@@ -36,11 +51,11 @@
     S.values = {}; S.origin = {};
     Object.keys(dfields).forEach(function (k) { if (FIELDS[k]) { S.values[k] = dfields[k].value; S.origin[k] = 'ai'; } });
     if (saved.values) Object.keys(saved.values).forEach(function (k) { if (FIELDS[k]) { S.values[k] = saved.values[k]; S.origin[k] = (saved.origin && saved.origin[k]) || 'rep'; } });
-    S.confirmed = saved.confirmed || {}; S.notes = saved.notes || {};
+    S.confirmed = saved.confirmed || {}; S.notes = saved.notes || {}; S.pricing = saved.pricing || null;
     S.savedAt = data.saved_at || saved.savedAt || null; S.savedBy = data.saved_by || '';
     var draft = !demo && store.get('ds-intake-draft-' + DEAL);
-    if (draft) { try { var d = JSON.parse(draft); if (d && d.ts && (!S.savedAt || d.ts > Date.parse(S.savedAt))) { S.values = d.values || S.values; S.origin = d.origin || S.origin; S.confirmed = d.confirmed || S.confirmed; S.notes = d.notes || S.notes; S.dirty = true; } } catch (e) { } }
-    renderHeader(demo); renderApp(); renderSide(); setSaveState();
+    if (draft) { try { var d = JSON.parse(draft); if (d && d.ts && (!S.savedAt || d.ts > Date.parse(S.savedAt))) { S.values = d.values || S.values; S.origin = d.origin || S.origin; S.confirmed = d.confirmed || S.confirmed; S.notes = d.notes || S.notes; if (d.pricing) S.pricing = d.pricing; S.dirty = true; } } catch (e) { } }
+    renderHeader(demo); renderApp(); DSCalc.load(S.pricing); renderSide(); setSaveState(); showView(location.hash === '#pricing' ? 'pricing' : 'intake');
   }
 
   function renderHeader(demo) {
@@ -127,6 +142,7 @@
       '<ul class="src-list" style="margin-top:10px">' + (d.sources || []).map(function (s) { return '<li><span class="ref">' + esc(s.ref) + '</span><span>' + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title) + '</a>' : esc(s.title)) + (s.date ? '<span class="d"> · ' + esc(s.date) + '</span>' : '') + '</span></li>'; }).join('') + '</ul>' +
       (d.aiOk === false ? '<p class="empty" style="margin-top:8px">The AI extraction failed on the last build. Fields show what the rep entered.</p>' : '') + '</div></div>';
     $('right').innerHTML = right;
+    DSCalc.render();
   }
 
   function setSaveState() {
@@ -137,7 +153,7 @@
   }
   function touch(itemId) {
     S.dirty = true; setSaveState();
-    if (!isDemo) store.set('ds-intake-draft-' + DEAL, JSON.stringify({ ts: Date.now(), values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes }));
+    if (!isDemo) saveDraft();
     if (itemId && itemId !== 'kickoff') { var sec = document.getElementById(itemId); if (sec) { var it = null; SPEC.sections.forEach(function (s) { s.items.forEach(function (x) { if (x.id === itemId) it = x; }); }); if (it) sec.querySelector('.fields').innerHTML = it.fields.map(fieldHtml).join(''); } }
     renderSide();
   }
@@ -159,7 +175,7 @@
   });
   document.addEventListener('input', function (e) {
     var t = e.target;
-    if (t.matches('input.t[data-k]')) { S.values[t.getAttribute('data-k')] = t.value; S.origin[t.getAttribute('data-k')] = 'rep'; S.dirty = true; setSaveState(); renderSide(); if (!isDemo) store.set('ds-intake-draft-' + DEAL, JSON.stringify({ ts: Date.now(), values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes })); }
+    if (t.matches('input.t[data-k]')) { S.values[t.getAttribute('data-k')] = t.value; S.origin[t.getAttribute('data-k')] = 'rep'; S.dirty = true; setSaveState(); renderSide(); if (!isDemo) saveDraft(); }
     if (t.matches('[data-note]')) { S.notes[t.getAttribute('data-note')] = t.value; S.dirty = true; setSaveState(); }
   });
   document.addEventListener('change', function (e) {
@@ -167,16 +183,16 @@
     if (t.matches('[data-confirm]')) { var id = t.getAttribute('data-confirm'); S.confirmed[id] = t.checked; var sec = document.getElementById(id); sec.classList.toggle('done', t.checked); t.parentNode.classList.toggle('on', t.checked); S.dirty = true; setSaveState(); renderSide(); }
   });
 
-  function answersPayload() { return { values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, savedAt: new Date().toISOString(), specVersion: SPEC.version }; }
+  function answersPayload() { return { values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, pricing: DSCalc.state(), savedAt: new Date().toISOString(), specVersion: SPEC.version }; }
   function save() {
     var a = assessIntake(S.values), who = $('who').value.trim();
     if (!who) { $('who').focus(); toast('Add your name first, so the team knows who saved it.'); return; }
     if (isDemo) { store.set('ds-intake-demo', JSON.stringify(answersPayload())); S.dirty = false; S.savedAt = new Date().toISOString(); S.savedBy = who; setSaveState(); toast('Demo saved in this browser only.'); return; }
     $('b-save').disabled = true; $('b-save').textContent = 'Saving…';
     var answeredN = SPEC.sections.reduce(function (n, s) { return n + s.items.filter(itemAnswered).length; }, 0);
-    api('save', { answers: answersPayload(), savedBy: who, quoteReady: a.quoteReady, specialistNeeded: a.specialistNeeded, quoteMissing: a.quoteMissing, flags: a.flags, itemsAnswered: answeredN, recap: recapText() })
+    api('save', { answers: answersPayload(), savedBy: who, quoteReady: a.quoteReady, specialistNeeded: a.specialistNeeded, quoteMissing: a.quoteMissing, flags: a.flags, itemsAnswered: answeredN, recap: recapText(), pricing: DSCalc.summary() })
       .then(function (r) {
-        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); toast(r.hubspot === 'ok' ? 'Saved and sent to HubSpot (note, deal fields' + (r.company_updated ? ', company SIS/CRM' : '') + ').' : 'Saved here, but HubSpot did not accept the update. Daniel has been notified.'); }
+        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); toast(r.hubspot === 'ok' ? 'Saved and sent to HubSpot (note, deal card' + (r.company_updated ? ', company card' : '') + ').' : 'Saved here, but HubSpot did not accept the update. Daniel has been notified.'); }
         else toast(r.error || 'Save failed.');
       }).catch(function () { toast('Save failed: network error.'); })
       .then(function () { $('b-save').disabled = false; $('b-save').textContent = 'Save'; setSaveState(); });
@@ -200,6 +216,7 @@
       if (parts.length || S.notes[it.id]) lines.push(it.n + '. ' + it.title + (S.confirmed[it.id] ? ' [confirmed]' : '') + '\n   ' + parts.join('; ') + (S.notes[it.id] ? '\n   Notes: ' + S.notes[it.id] : ''));
     }); });
     if (a.flags.length) { lines.push(''); lines.push('Flags:'); a.flags.forEach(function (f) { lines.push('- ' + (f.level === 'specialist' ? '[specialist] ' : '') + f.text); }); }
+    lines = lines.concat(DSCalc.recapLines());
     return lines.join('\n');
   }
   $('b-copy').addEventListener('click', function () {
