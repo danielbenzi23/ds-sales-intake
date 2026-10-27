@@ -31,7 +31,7 @@ window.DSProposal = (function () {
   function defaults() {
     var v = V(), d = D(), pd = PD() || {}, abbr = pd.abbr || ((d.institution || {}).name) || 'your institution', inst = pd.inst || (d.institution || {}).name || '';
     var ch = [];
-    if (v.incumbent) ch.push('Today ' + abbr + ' relies on ' + v.incumbent.replace(/\.$/, '') + '.');
+    if (v.incumbent) ch.push('Current process at ' + abbr + ': ' + v.incumbent.replace(/\.$/, '') + '.');
     if (Array.isArray(v.rules_source) && v.rules_source.length) ch.push('Equivalency rules live in ' + v.rules_source.join(', ').toLowerCase() + ', so every evaluation depends on a few people.');
     ch.push('Prospective transfer students cannot see how their credits apply before they apply, and many never start an application.');
     if (ch.length < 3) ch.push('Transfer credit evaluation is manual and slow, and applicants drop off while they wait.');
