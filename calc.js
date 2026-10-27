@@ -346,6 +346,17 @@ window.DSCalc = (function () {
     state: function () { return P; },
     summary: summary,
     recapLines: recapLines,
+    proposalData: function () {
+      if (!P) return null;
+      var opts = P.opts.map(function (o, i) {
+        var t = totals(o);
+        return { name: o.name, term: o.term, years: t.years, prot: !!o.prot, primary: i === P.primary, customName: o.customName, annual: t.annual, oneTime: t.oneTime, tcv: t.tcv, retailAnnual: t.retailAnnual, rows: t.rows };
+      });
+      var eff = P.eff || {}, effText = 'date of execution';
+      if (eff.mode === 'custom' && eff.date) effText = new Date(eff.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      else if (eff.mode === 'other' && String(eff.other || '').trim()) effText = String(eff.other).trim();
+      return { inst: P.inst, abbr: P.abbr, fte: P.fte, model: P.tab, scope: scopeLevel(), status: P.status, approvedBy: P.approvedBy, approvedAt: P.approvedAt, flags: P.flags, note: P.note, effText: effText, opts: opts, ent: P.ent };
+    },
     render: render
   };
 })();

@@ -96,3 +96,4 @@ table.neg input.t[type=text] { min-width: 150px; }
   .views-in { padding: 0 16px; }
 }
 .calc-wrap label > .src-tag { justify-self: start; }
+.calc-wrap .hint { margin-left: 0; }
