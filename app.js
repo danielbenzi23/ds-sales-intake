@@ -19,7 +19,7 @@
   SPEC.kickoff.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = 'kickoff'; });
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { } } };
   var ME = null; try { ME = JSON.parse(store.get('ds-intake-user') || 'null'); } catch (e) { ME = null; }
-  $('who').value = store.get('ds-intake-who') || (ME && ME.name) || '';
+  $('who').value = (ME && ME.name) || store.get('ds-intake-who') || '';
   if (ME && !isDemo) { var back = document.createElement('a'); back.href = '/'; back.className = 'back-link'; back.textContent = ME.role === 'admin' ? '← All deals' : '← My deals'; var logo = document.querySelector('.top .logo'); logo.parentNode.insertBefore(back, logo); }
   $('who').addEventListener('input', function () { store.set('ds-intake-who', $('who').value); });
 
