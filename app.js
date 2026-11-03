@@ -39,7 +39,7 @@
     if (v === 'pricing') DSCalc.render();
     if (v === 'proposal') DSProposal.render();
     if (v === 'discovery') DSDiscovery.render();
-    try { history.replaceState(null, '', location.pathname + (v === 'intake' ? '' : '#' + v)); } catch (e) { }
+    try { history.replaceState(null, '', location.pathname + location.search + (v === 'intake' ? '' : '#' + v)); } catch (e) { }
   }
   document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); window.scrollTo({ top: 0 }); }); });
   var HOST = {
@@ -238,12 +238,12 @@
   } else if (needsLink) {
     $('d-title').textContent = 'Sales intake';
     $('b-save').disabled = true; $('b-refresh').disabled = true;
-    $('app').innerHTML = '<div class="loading">Open this deal once from its Slack message (the link carries a private key). After that, ' + esc(location.host) + '/' + esc(DEAL) + ' opens directly in this browser.</div>';
+    $('app').innerHTML = '<div class="loading">This link is missing its private key. Open the deal from the Sales Intake field in HubSpot or from the Slack message; the full link ends with ?t=...</div>';
   } else {
     api('get').then(function (r) {
       if (r.ok) {
         try { localStorage.setItem(tokenKey, TOKEN); } catch (e) { }
-        if (location.pathname !== '/' + DEAL || location.search) { try { history.replaceState(null, '', '/' + DEAL + (START_VIEW !== 'intake' ? '#' + START_VIEW : '')); } catch (e) { } }
+        var shareUrl = '/' + DEAL + '?t=' + TOKEN + (START_VIEW !== 'intake' ? '#' + START_VIEW : ''); if (location.pathname + location.search + location.hash !== shareUrl) { try { history.replaceState(null, '', shareUrl); } catch (e) { } }
       }
       if (!r.ok) { try { localStorage.removeItem(tokenKey); } catch (e) { } $('app').innerHTML = '<div class="loading">' + esc(r.error || 'Could not load this intake.') + '</div>'; $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true; if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.'); return; }
       load(r, false);
