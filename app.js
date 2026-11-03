@@ -237,17 +237,26 @@
     banner('info', '<b>Demo.</b> This is fictional data showing what a rep sees. Real intakes open from the Slack message with a link that carries the deal and a private token.');
     var demoSaved = null; try { demoSaved = JSON.parse(store.get('ds-intake-demo') || 'null'); } catch (e) { }
     load({ dossier: DEMO, answers: demoSaved || {} }, true);
-  } else if (needsLink) {
-    $('d-title').textContent = 'Sales intake';
-    $('b-save').disabled = true; $('b-refresh').disabled = true;
-    $('app').innerHTML = '<div class="loading">This link is missing its private key. Open it from <a href="/">your deals page</a>, the Sales Intake field in HubSpot, or the Slack message.</div>';
   } else {
-    api('get').then(function (r) {
-      if (r.ok) {
-        try { localStorage.setItem(tokenKey, TOKEN); } catch (e) { }
-        var shareUrl = '/' + DEAL + '?t=' + TOKEN + (START_VIEW !== 'intake' ? '#' + START_VIEW : ''); if (location.pathname + location.search + location.hash !== shareUrl) { try { history.replaceState(null, '', shareUrl); } catch (e) { } }
-      }
-      if (!r.ok) { try { localStorage.removeItem(tokenKey); } catch (e) { } $('app').innerHTML = '<div class="loading">' + esc(r.error || 'Could not load this intake.') + '</div>'; $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true; if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.'); return; }
+    var KEY = store.get('ds-intake-key') || '';
+    // Signed-in team members can open any deal page: a link without a token (or with an old one) is resolved with
+    // their personal access key. Everyone else still needs the full link from HubSpot or Slack.
+    var withKey = function () {
+      return fetch('/api/intake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'token', k: KEY, deal: DEAL }) })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Bad response' }; }); })
+        .then(function (r) { if (r.ok && r.t) { TOKEN = String(r.t); return api('get'); } return r; });
+    };
+    var fail = function (r) {
+      try { localStorage.removeItem(tokenKey); } catch (e) { }
+      $('d-title').textContent = 'Sales intake'; $('b-save').disabled = true; $('b-refresh').disabled = true;
+      $('app').innerHTML = '<div class="loading">' + (KEY ? esc(r.error || 'Could not load this intake.') : 'This link is missing its private key. Open your personal access link once on this browser and every deal link works, or open the deal from the Sales Intake field in HubSpot or the Slack message.') + '</div>';
+      if (r.inactive) banner('info', 'The n8n workflow <b>Sales Intake API</b> is not active yet.');
+    };
+    var first = needsLink ? (KEY ? withKey() : Promise.resolve({ ok: false })) : api('get').then(function (r) { return (!r.ok && KEY && !r.inactive) ? withKey() : r; });
+    first.then(function (r) {
+      if (!r.ok) { fail(r); return; }
+      try { localStorage.setItem(tokenKey, TOKEN); } catch (e) { }
+      var shareUrl = '/' + DEAL + '?t=' + TOKEN + (START_VIEW !== 'intake' ? '#' + START_VIEW : ''); if (location.pathname + location.search + location.hash !== shareUrl) { try { history.replaceState(null, '', shareUrl); } catch (e) { } }
       load(r, false);
     }).catch(function () { $('app').innerHTML = '<div class="loading">Network error. Try again.</div>'; });
   }

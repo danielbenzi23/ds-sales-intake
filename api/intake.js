@@ -1,6 +1,6 @@
 // Server-side proxy between the intake page and n8n. The browser never sees the n8n URL or the key.
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || 'https://degreesight.app.n8n.cloud/webhook';
-const ROUTES = { get: 'sales-intake/get', save: 'sales-intake/save', build: 'sales-intake/build', deals: 'sales-intake/deals' };
+const ROUTES = { get: 'sales-intake/get', save: 'sales-intake/save', build: 'sales-intake/build', deals: 'sales-intake/deals', token: 'sales-intake/token' };
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -12,6 +12,19 @@ module.exports = async function handler(req, res) {
   body = body || {};
   const route = ROUTES[body.action];
   if (!route) { res.status(400).json({ ok: false, error: 'Unknown action' }); return; }
+  if (body.action === 'token') {
+    // Signed-in team member opening a deal link without (or with an old) token.
+    const k = String(body.k || '').replace(/[^a-z0-9]/gi, '');
+    const deal = String(body.deal || '').replace(/[^0-9]/g, '');
+    if (!k || !deal) { res.status(400).json({ ok: false, error: 'Missing access key or deal' }); return; }
+    try {
+      const r = await fetch(N8N_BASE + '/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-intake-key': key }, body: JSON.stringify({ k, deal }) });
+      const text = await r.text();
+      let data; try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { ok: false, error: 'Unexpected response from n8n' }; }
+      res.status(r.status).json(data);
+    } catch (e) { res.status(502).json({ ok: false, error: 'Could not reach n8n.' }); }
+    return;
+  }
   if (body.action === 'deals') {
     // Personal access link: the n8n side checks the key and returns the user's deals (all deals for admins).
     const k = String(body.k || '').replace(/[^a-z0-9]/gi, '');
