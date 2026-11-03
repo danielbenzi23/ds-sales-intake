@@ -18,7 +18,9 @@
   SPEC.sections.forEach(function (sec) { sec.items.forEach(function (it) { if (it.quote) QUOTE_IDS.push(it.id); it.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = it.id; }); }); });
   SPEC.kickoff.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = 'kickoff'; });
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { } } };
-  $('who').value = store.get('ds-intake-who') || '';
+  var ME = null; try { ME = JSON.parse(store.get('ds-intake-user') || 'null'); } catch (e) { ME = null; }
+  $('who').value = store.get('ds-intake-who') || (ME && ME.name) || '';
+  if (ME && !isDemo) { var back = document.createElement('a'); back.href = '/'; back.className = 'back-link'; back.textContent = ME.role === 'admin' ? '← All deals' : '← My deals'; var logo = document.querySelector('.top .logo'); logo.parentNode.insertBefore(back, logo); }
   $('who').addEventListener('input', function () { store.set('ds-intake-who', $('who').value); });
 
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2600); }
@@ -238,7 +240,7 @@
   } else if (needsLink) {
     $('d-title').textContent = 'Sales intake';
     $('b-save').disabled = true; $('b-refresh').disabled = true;
-    $('app').innerHTML = '<div class="loading">This link is missing its private key. Open the deal from the Sales Intake field in HubSpot or from the Slack message; the full link ends with ?t=...</div>';
+    $('app').innerHTML = '<div class="loading">This link is missing its private key. Open it from <a href="/">your deals page</a>, the Sales Intake field in HubSpot, or the Slack message.</div>';
   } else {
     api('get').then(function (r) {
       if (r.ok) {
