@@ -74,9 +74,10 @@ table.pt td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-a
 table.pt .r { text-align: right; white-space: nowrap; }
 table.pt tr.off td { color: var(--muted); opacity: .6; }
 table.pt tr.total td { font-weight: 700; color: var(--fg); border-bottom: 0; }
-table.neg td.conc { min-width: 150px; white-space: nowrap; }
-table.neg td.conc input { width: 100px; vertical-align: middle; }
-table.neg td.conc span { display: inline-block; min-width: 34px; color: var(--red); font-weight: 700; font-size: 12px; }
+table.neg td.conc { min-width: 190px; white-space: nowrap; }
+table.neg td.conc input[type=range] { width: 100px; vertical-align: middle; }
+table.neg td.conc input.conc-n { width: 58px; margin-left: 6px; padding: 5px 6px; text-align: right; vertical-align: middle; }
+table.neg td.conc span { margin-left: 3px; color: var(--muted); font-weight: 600; font-size: 12px; }
 table.neg input.t[type=text] { min-width: 150px; }
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
 .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--soft); }

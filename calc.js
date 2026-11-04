@@ -256,7 +256,7 @@ window.DSCalc = (function () {
         var st = o.lines[r.key], price = st.price == null ? Math.round(r.rt) : st.price;
         return '<tr><td>' + esc(r.label) + (r.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</td><td class="r">' + money(r.rt) + '</td>' +
           '<td class="r"><input class="t num" type="number" step="100" data-price="' + r.key + '" value="' + price + '"></td>' +
-          '<td class="conc"><input type="range" min="0" max="50" step="1" data-conc="' + r.key + '" value="' + (st.conc || 0) + '"><span>' + (st.conc ? st.conc + '%' : '') + '</span></td>' +
+          '<td class="conc"><input type="range" min="0" max="100" step="1" data-conc="' + r.key + '" value="' + (st.conc || 0) + '" aria-label="Concession"><input class="t conc-n" type="number" min="0" max="100" step="1" data-concn="' + r.key + '" value="' + (st.conc || 0) + '" aria-label="Concession percent"><span>%</span></td>' +
           '<td><input class="t" type="text" data-reason="' + r.key + '" placeholder="e.g. AACRAO member credit" value="' + esc(st.reason) + '"></td><td class="r"><b>' + money(r.q) + '</b></td></tr>';
       }).join('') : '<tr><td colspan="6" class="muted">Select at least one product.</td></tr>') +
       '<tr class="total"><td colspan="5">Annual total' + (t.oneTime ? ' (plus ' + money(t.oneTime) + ' one-time)' : '') + '</td><td class="r">' + money(t.annual) + '</td></tr></tbody></table></div>' +
@@ -283,13 +283,14 @@ window.DSCalc = (function () {
     if (t.matches('[data-o="name"]')) { o.name = t.value; if (host) host.dirty(); return; }
     if (t.matches('[data-reason]')) { o.lines[t.getAttribute('data-reason')].reason = t.value; if (host) host.dirty(); return; }
     if (t.matches('[data-customname]')) { o.customName = t.value; if (host) host.dirty(); return; }
-    if (t.matches('[data-conc]')) { o.lines[t.getAttribute('data-conc')].conc = num(t.value); var sp = t.nextElementSibling; if (sp) sp.textContent = t.value > 0 ? t.value + '%' : ''; if (host) host.dirty(); return; }
+    if (t.matches('[data-conc]')) { o.lines[t.getAttribute('data-conc')].conc = num(t.value); var nb = t.nextElementSibling; if (nb) nb.value = t.value; if (host) host.dirty(); return; }
+    if (t.matches('[data-concn]')) { var cv = Math.max(0, Math.min(100, Math.round(num(t.value)))); o.lines[t.getAttribute('data-concn')].conc = cv; var sl = t.previousElementSibling; if (sl) sl.value = cv; if (host) host.dirty(); return; }
   }
   function onChange(e) {
     var t = e.target, o = P.opts[P.cur];
     if (t.matches('[data-scope]')) { var q = t.getAttribute('data-scope'), autoOn = !!autoScope()[q]; P.scopeOverride[q] = t.checked === autoOn ? null : t.checked; if (q === 'campuses' || q === 'portals') { if (t.checked && P.tab === 'standard') P.tab = 'enterprise'; } touch(); return; }
     if (t.matches('[data-p="fte"]')) { P.fte = Math.max(0, num(t.value)); P.fteSource = 'rep'; touch(); return; }
-    if (t.matches('[data-conc]')) { touch(); return; }
+    if (t.matches('[data-conc], [data-concn]')) { touch(); return; }
     if (t.matches('[data-rom]')) { P.rom[t.getAttribute('data-rom')] = num(t.value); touch(); return; }
     if (t.id === 'p-se') { P.seReviewed = t.checked; touch(); return; }
     if (t.matches('[data-o="term"]')) { o.term = num(t.value); touch(); return; }
