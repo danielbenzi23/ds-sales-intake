@@ -1,5 +1,5 @@
 /* Pricing calculator for the sales intake page.
-   Engine: PRICING MATRIX.xlsx (beta v0.3) tiers, minimums, protected-floor curve and installation bands (Standard),
+   Engine: DegreeSight Pricing Matrix (Google Sheet): protected curve and retail = protected x 1.3, installation bands (Standard),
    plus Woody's model v2 for Enterprise (platform base + one line per tech stack component, editable placeholder rates).
    Prefills from the intake: FTE (HubSpot company), SIS / CRM / degree audit (items 5 and 6), scope flags (items 1, 2, 3, 16
    and the install-base specialist rules). Approval is gated by the Sales Checklist: the five QUOTE items must be answered,
@@ -39,10 +39,18 @@ window.DSCalc = (function () {
     if (key === 'Installation') return installFor(f);
     if (key === 'Consultative Services') return 5000;
     if (key === 'Custom') return 0;
-    var tp = tierPrice(key, f), cp = curvePrice(key, f);
-    // Protected (faith-based / mission rate) is always the lower number, standard the higher. Real bands come from PRICING MATRIX.xlsx.
-    if (tp !== null && cp !== null) return prot ? Math.min(tp, cp) : Math.max(tp, cp);
-    return tp !== null ? tp : (cp || 0);
+    var m = matrixPrice(key, f, prot);
+    return m === null ? 0 : m;
+  }
+  /* DegreeSight Pricing Matrix (Google Sheet), "Per partner contract offer matrix":
+     protected = the "calculated with algo's" curve (min/max clamped), rounded to $1,000;
+     retail (not protected) = protected x 1.3, rounded to $1,000. At 17,000 FTE: Inbound $74k / $96k, Insight $113k / $147k.
+     Insight includes Inbound, so with both lines on the Insight line carries only the difference. */
+  var RETAIL_MARKUP = 1.3;
+  function matrixPrice(key, f, prot) {
+    var cp = curvePrice(key, f); if (cp === null) return null;
+    var p = Math.round(cp / 1000) * 1000;
+    return prot ? p : Math.round(p * RETAIL_MARKUP / 1000) * 1000;
   }
 
   /* Enterprise tech stack catalog (annual integration rate per component; editable until the rate card is signed) */
@@ -51,7 +59,7 @@ window.DSCalc = (function () {
     crm: [['None', 0], ['Slate', 6000], ['Salesforce', 8000], ['HubSpot', 4000], ['Element451', 6000], ['TargetX', 7000], ['Other', 8000]],
     audit: [['None', 0], ['Degree Works', 9000], ['DARS / uAchieve', 10000], ['Stellic', 8000], ['Other', 10000]]
   };
-  var PORTAL_RATE = 12000, CAMPUS_RATE = 15000, ENT_BASE = 60000;
+  var PORTAL_RATE = 12000, CAMPUS_RATE = 15000;
   var MAP_SIS = { 'Colleague': 'Colleague', 'Banner': 'Banner', 'PeopleSoft': 'PeopleSoft', 'Workday Student': 'Workday Student', 'Jenzabar J1': 'Jenzabar', 'Jenzabar CX': 'Jenzabar', 'SAP': 'Homegrown / other', 'Anthology / CampusNexus / CampusVue': 'Anthology Student', 'Ellucian PowerCampus': 'PowerCampus', 'Homegrown or other': 'Homegrown / other' };
   var MAP_CRM = { 'Slate': 'Slate', 'Salesforce (standard)': 'Salesforce', 'Salesforce Education Cloud': 'Salesforce', 'TargetX': 'TargetX', 'Element 451': 'Element451', 'HubSpot': 'HubSpot', 'None': 'None', 'Ellucian Recruit': 'Other', 'Radius': 'Other', 'EAB Navigate': 'Other', 'Generic SFTP CRM': 'Other' };
   var MAP_AUDIT = { 'DegreeWorks': 'Degree Works', 'uAchieve / DARS': 'DARS / uAchieve', 'Stellic': 'Stellic', 'Built into SIS': 'None', 'None': 'None' };
@@ -117,7 +125,7 @@ window.DSCalc = (function () {
       v: 1, tab: 'standard', fte: f, fteSource: f ? 'HubSpot company' : '', inst: inst.name || (d.deal || {}).name || '', abbr: abbrFrom(inst.name || ''),
       opts: [newOption('Option 1: Inbound, 1 year', 12, ['Installation', 'Inbound']), newOption('Option 2: Inbound + Insight, 3 years', 36, ['Installation', 'Inbound', 'Insight']), newOption('Option 3: Inbound + Insight, 5 years', 60, ['Installation', 'Inbound', 'Insight'])],
       primary: 1, cur: 1,
-      ent: { base: ENT_BASE, campuses: 1, portals: 1, sis: MAP_SIS[v.sis_name] || 'Homegrown / other', crm: MAP_CRM[v.crm_name] || 'None', audit: MAP_AUDIT[v.audit_engine] || 'None', rate: {} },
+      ent: { base: null, campuses: 1, portals: 1, sis: MAP_SIS[v.sis_name] || 'Homegrown / other', crm: MAP_CRM[v.crm_name] || 'None', audit: MAP_AUDIT[v.audit_engine] || 'None', rate: {} },
       scopeOverride: {}, rom: { lo: 15000, hi: 120000, p: 30 }, seReviewed: false,
       flags: { lock: true, roi: true, tcv: false, disc: false, check: false, msa: true }, eff: { mode: 'execution', date: '', other: '' }, note: '',
       status: 'draft', approvedBy: '', approvedAt: ''
@@ -138,7 +146,9 @@ window.DSCalc = (function () {
     ];
   }
   function entOn(r) { return !((P.ent.off || {})[r.key]) && r.qty > 0; }
-  function entTotal() { return entRows().reduce(function (t, r) { return t + (entOn(r) ? (Number(r.rate) || 0) * (Number(r.qty) || 0) : 0); }, Number(P.ent.base) || 0); }
+  // Platform base defaults to the matrix Inbound price for this FTE (protected or retail, per option) until the rep types one.
+  function entBase(o) { return P.ent.base != null && P.ent.base !== '' ? Number(P.ent.base) || 0 : retail('Inbound', P.fte, (o || P.opts[P.cur]).prot); }
+  function entTotal(o) { return entRows().reduce(function (t, r) { return t + (entOn(r) ? (Number(r.rate) || 0) * (Number(r.qty) || 0) : 0); }, entBase(o)); }
   function visibleLines() { return LINES; }
   var GROUPS = [[false, 'Products', 'annual licenses'], [true, 'Implementation and development', 'one-time']];
   function groupHead(g, cols) { return '<tr class="grp"><td colspan="' + cols + '">' + g[1] + ' <span>' + g[2] + '</span></td></tr>'; }
@@ -155,11 +165,12 @@ window.DSCalc = (function () {
   function lineOn(o, l) { var st = o.lines[l.key] || {}; return l.rom ? !!st.romOn : !!st.on; }
   function lineRetail(o, key) {
     var ov = o.lines[key] && o.lines[key].retail; if (ov != null && ov !== '') return Number(ov) || 0;
-    if (P.tab === 'enterprise' && key === 'Inbound') return entTotal();
+    if (P.tab === 'enterprise' && key === 'Inbound') return entTotal(o);
+    if (key === 'Insight' && o.lines.Inbound && o.lines.Inbound.on) return Math.max(0, retail('Insight', P.fte, o.prot) - retail('Inbound', P.fte, o.prot));
     if (key === 'Custom development') return romExpected();
     return retail(key, P.fte, o.prot);
   }
-  function lineLabel(o, l) { return l.custom ? (o.customName || 'Custom line') : l.label.replace(/^DegreeSight "(\w+)" - Annual License$/, '$1'); }
+  function lineLabel(o, l) { if (l.custom) return o.customName || 'Custom line'; var n = l.label.replace(/^DegreeSight "(\w+)" - Annual License$/, '$1'); return l.key === 'Insight' && o.lines.Inbound && o.lines.Inbound.on ? n + ' (adds to Inbound)' : n; }
   function totals(o) {
     var annual = 0, oneTime = 0, retailAnnual = 0, rows = [], custom = scopeLevel() === 'custom';
     visibleLines().forEach(function (l) {
@@ -247,10 +258,10 @@ window.DSCalc = (function () {
     if (P.tab === 'enterprise') {
       h += '<div class="sub-h">Tech stack' + (P.ent.stackFromIntake ? ' <span class="src-tag">intake items 5 and 6</span>' : '') + '</div>' +
         '<div class="row3">' + [['sis', 'SIS'], ['crm', 'CRM'], ['audit', 'Degree audit']].map(function (k) { return '<label>' + k[1] + '<select class="t" data-ent="' + k[0] + '">' + STACK[k[0]].map(function (r) { return '<option' + (P.ent[k[0]] === r[0] ? ' selected' : '') + '>' + esc(r[0]) + '</option>'; }).join('') + '</select></label>'; }).join('') + '</div>' +
-        '<div class="row3"><label>Platform base (annual)<input class="t" type="number" step="1000" data-ent="base" value="' + P.ent.base + '"></label><label>Campuses<input class="t" type="number" min="1" step="1" data-ent="campuses" value="' + P.ent.campuses + '"></label><label>Portals<input class="t" type="number" min="1" step="1" data-ent="portals" value="' + P.ent.portals + '"></label></div>' +
+        '<div class="row3"><label>Platform base (annual)<input class="t" type="number" step="1000" data-ent="base" value="' + Math.round(entBase(o)) + '"' + (P.ent.base == null ? ' title="Matrix Inbound price for this FTE. Type to override, clear to go back."' : '') + '></label><label>Campuses<input class="t" type="number" min="1" step="1" data-ent="campuses" value="' + P.ent.campuses + '"></label><label>Portals<input class="t" type="number" min="1" step="1" data-ent="portals" value="' + P.ent.portals + '"></label></div>' +
         '<p class="hint" style="margin:8px 0 4px">Integration components (annual). Untick anything they do not need; rates are placeholders until the implementation team signs a rate card.</p>' +
         '<div class="ent-rows">' + entRows().map(function (r) { var on = entOn(r); return '<div class="ent-row' + (on ? '' : ' off') + '"><label class="ent-on"><input type="checkbox" data-enton="' + r.key + '"' + (on ? ' checked' : '') + (r.qty > 0 ? '' : ' disabled') + '> ' + esc(r.name) + '</label><input class="t num" type="number" step="500" data-rate="' + r.key + '" value="' + r.rate + '" aria-label="Rate"><span class="q">&times; ' + r.qty + '</span><b>' + money(on ? r.rate * r.qty : 0) + '</b></div>'; }).join('') + '</div>' +
-        '<p class="hint" style="margin:6px 0 0">Platform total (replaces the Inbound line): <b>' + money(entTotal()) + '</b> per year.</p>';
+        '<p class="hint" style="margin:6px 0 0">Platform total (replaces the Inbound line): <b>' + money(entTotal(o)) + '</b> per year.</p>';
     }
     h += GROUPS.map(function (g) { return '<div class="sub-h">' + g[1] + ' <span class="muted" style="font-weight:500">(' + g[2] + ')</span></div>' + (g[0] ? '' : '<p class="hint" style="margin:0 0 6px">Insight includes Inbound. Custom is a blank line you name (for example an AACRAO member credit).</p>') + '<div class="prods">' +
       visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
@@ -260,10 +271,10 @@ window.DSCalc = (function () {
       }).join('') + '</div>'; }).join('') + '</div></section>';
 
     // tier table
-    h += fold('tiers', 'Retail prices at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE'), 'Edit any retail price', '<p class="hint" style="margin:0 0 8px">Tier is the workbook rate per FTE; Curve is the smooth model. Protected pricing takes the lower of the two, standard the higher. Implementation comes from the size bands. Clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
-      '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Tier</th><th class="r">Curve</th><th class="r">Retail</th></tr></thead><tbody>' +
+    h += fold('tiers', 'Retail prices at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE'), 'Edit any retail price', '<p class="hint" style="margin:0 0 8px">From the DegreeSight Pricing Matrix: protected is the floor, standard (retail) is protected &times; 1.3, both rounded to $1,000. Insight includes Inbound. Implementation comes from the size bands. Clear a box to go back to the matrix price.</p>' +
+      '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Protected</th><th class="r">Standard</th><th class="r">Price used</th></tr></thead><tbody>' +
       GROUPS.map(function (g) { return groupHead(g, 4) + visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
-        var on = lineOn(o, l), tp = tierPrice(l.key, P.fte), cp = curvePrice(l.key, P.fte), ov = o.lines[l.key].retail;
+        var on = lineOn(o, l), tp = matrixPrice(l.key, P.fte, true), cp = matrixPrice(l.key, P.fte, false), ov = o.lines[l.key].retail;
         return '<tr class="' + (on ? '' : 'off') + '"><td>' + esc(lineLabel(o, l)) + '</td><td class="r">' + (tp === null || !P.fte ? '-' : money(tp)) + '</td><td class="r">' + (cp === null || !P.fte ? '-' : money(cp)) + '</td><td class="r"><input class="t num' + (ov != null ? ' edited' : '') + '" type="number" step="100" data-retail="' + l.key + '" value="' + Math.round(lineRetail(o, l.key)) + '" aria-label="Retail for ' + esc(lineLabel(o, l)) + '"' + (ov != null ? ' title="Edited. Clear the box to go back to the calculated price."' : '') + '></td></tr>';
       }).join(''); }).join('') + '</tbody></table></div>') + '</div>';
 
@@ -325,7 +336,7 @@ window.DSCalc = (function () {
     if (t.matches('[data-o="prot"]')) { o.prot = t.value === '1'; touch(); return; }
     if (t.matches('[data-o="name"]')) { render(); return; }
     if (t.id === 'p-primary') { P.primary = P.cur; touch(); return; }
-    if (t.matches('[data-ent]')) { var k = t.getAttribute('data-ent'); if (k === 'sis' || k === 'crm' || k === 'audit') { P.ent[k] = t.value; delete P.ent.rate[k]; } else P.ent[k] = k === 'base' ? num(t.value) : Math.max(1, num(t.value)); touch(); return; }
+    if (t.matches('[data-ent]')) { var k = t.getAttribute('data-ent'); if (k === 'sis' || k === 'crm' || k === 'audit') { P.ent[k] = t.value; delete P.ent.rate[k]; } else P.ent[k] = k === 'base' ? (String(t.value).trim() === '' ? null : num(t.value)) : Math.max(1, num(t.value)); touch(); return; }
     if (t.matches('[data-enton]')) { P.ent.off = P.ent.off || {}; P.ent.off[t.getAttribute('data-enton')] = !t.checked; touch(); return; }
     if (t.matches('[data-rate]')) { P.ent.rate[t.getAttribute('data-rate')] = num(t.value); touch(); return; }
     if (t.matches('[data-line]')) { var lk = t.getAttribute('data-line'), ll = LINES.filter(function (x) { return x.key === lk; })[0]; if (ll && ll.rom) o.lines[lk].romOn = t.checked; else o.lines[lk].on = t.checked; touch(); return; }
