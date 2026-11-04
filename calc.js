@@ -286,6 +286,7 @@ window.DSCalc = (function () {
       '</tbody></table></div>' +
       '<div class="kpis"><div class="kpi"><div class="l">Annual</div><div class="v">' + money(t.annual) + '</div><div class="s">Billed annually for ' + t.years + ' year' + (t.years > 1 ? 's' : '') + '</div></div>' +
       '<div class="kpi"><div class="l">One-time</div><div class="v">' + money(t.oneTime) + '</div><div class="s">Implementation and development</div></div>' +
+      '<div class="kpi"><div class="l">Year one</div><div class="v">' + money(t.annual + t.oneTime) + '</div><div class="s">Products plus implementation</div></div>' +
       '<div class="kpi"><div class="l">Total over term</div><div class="v">' + money(t.tcv) + '</div><div class="s">' + (P.flags.tcv ? 'Printed on the proposal' : 'Internal only') + '</div></div></div></div></section>';
 
     // proposal terms
