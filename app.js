@@ -114,8 +114,7 @@
         html += '<section class="card item' + (it.quote ? ' quote' : '') + (done ? ' done' : '') + '" id="' + it.id + '">' +
           '<div class="item-h"><div class="num">' + it.n + '</div><h3>' + esc(it.title) + (it.quote ? '<span class="badge quote">Quote</span>' : '') + '</h3>' +
           '<label class="confirm' + (done ? ' on' : '') + '"><input type="checkbox" data-confirm="' + it.id + '"' + (done ? ' checked' : '') + '> Confirmed with the school</label></div>' +
-          (it.hint ? '<p class="hint">' + esc(it.hint) + '</p>' : '') +
-          (it.say ? '<div class="say">' + esc(it.say) + '</div>' : '') +
+          (it.hint || it.say ? '<details class="guide"><summary>How to ask it</summary>' + (it.hint ? '<p class="hint">' + esc(it.hint) + '</p>' : '') + (it.say ? '<div class="say">' + esc(it.say) + '</div>' : '') + '</details>' : '') +
           '<div class="fields">' + it.fields.map(fieldHtml).join('') + '</div>' +
           '<details class="notes"' + (S.notes[it.id] ? ' open' : '') + '><summary>Notes</summary><textarea class="t" data-note="' + it.id + '" placeholder="What they said, in their words">' + esc(S.notes[it.id] || '') + '</textarea></details>' +
           '</section>';

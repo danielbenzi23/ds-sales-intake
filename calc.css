@@ -106,3 +106,18 @@ table.neg input.tot { max-width: 120px; font-weight: 700; }
 table.pt tr.total .hint { font-weight: 400; margin-left: 6px; }
 table.pt tr.grp td { background: var(--soft); font: 700 12px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--fg); padding: 8px; }
 table.pt tr.grp td span { font: 500 11px var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 4px; }
+
+/* Folded sections: closed by default, a one-line summary on the header */
+details.card.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+details.card.fold > summary::-webkit-details-marker { display: none; }
+details.card.fold > summary::before { content: ''; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; margin-right: 2px; }
+details.card.fold[open] > summary::before { transform: rotate(45deg); }
+details.card.fold > summary .fold-sum { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font: 500 12px var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--muted); }
+.verdict-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.verdict-chip.routine { background: var(--green-soft); color: var(--green); }
+.verdict-chip.enterprise { background: var(--ai-soft); color: var(--ai); }
+.verdict-chip.custom { background: var(--red-soft); color: var(--red); }
+.warn-tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); white-space: nowrap; }
+.scope-q.sug { border-style: dashed; border-color: var(--amber); }
+.ent-row.off span, .ent-row.off b { opacity: .5; }
+.ent-on { display: flex !important; gap: 6px; align-items: center; font-size: 12.5px !important; font-weight: 500 !important; color: var(--body) !important; }

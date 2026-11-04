@@ -40,7 +40,9 @@ window.DSCalc = (function () {
     if (key === 'Consultative Services') return 5000;
     if (key === 'Custom') return 0;
     var tp = tierPrice(key, f), cp = curvePrice(key, f);
-    return (prot && cp !== null) ? cp : (tp !== null ? tp : (cp || 0));
+    // Protected (faith-based / mission rate) is always the lower number, standard the higher. Real bands come from PRICING MATRIX.xlsx.
+    if (tp !== null && cp !== null) return prot ? Math.min(tp, cp) : Math.max(tp, cp);
+    return tp !== null ? tp : (cp || 0);
   }
 
   /* Enterprise tech stack catalog (annual integration rate per component; editable until the rate card is signed) */
@@ -87,7 +89,9 @@ window.DSCalc = (function () {
     if (v.all_ga === 'Roadmap items present') out.custom = 'Item 16: roadmap items in the proposal' + (v.roadmap_items ? ' (' + v.roadmap_items + ')' : '');
     return out;
   }
-  function scopeOn(q) { var o = P.scopeOverride[q]; if (o === true || o === false) return o; return !!autoScope()[q]; }
+  // The intake only suggests scope; nothing is added until the rep ticks it.
+  function scopeOn(q) { return P.scopeOverride[q] === true; }
+  function pendingScope() { var a = autoScope(); return SCOPE.filter(function (s) { return a[s.q] && !scopeOn(s.q); }); }
   function scopeLevel() {
     var lvl = 'routine';
     SCOPE.forEach(function (s) { if (!scopeOn(s.q)) return; if (s.level === 'custom') lvl = 'custom'; else if (lvl === 'routine') lvl = 'enterprise'; });
@@ -133,7 +137,8 @@ window.DSCalc = (function () {
       { key: 'campuses', name: 'Additional campus', rate: rate('campuses', CAMPUS_RATE), qty: Math.max(0, e.campuses - 1) }
     ];
   }
-  function entTotal() { return entRows().reduce(function (t, r) { return t + (Number(r.rate) || 0) * (Number(r.qty) || 0); }, Number(P.ent.base) || 0); }
+  function entOn(r) { return !((P.ent.off || {})[r.key]) && r.qty > 0; }
+  function entTotal() { return entRows().reduce(function (t, r) { return t + (entOn(r) ? (Number(r.rate) || 0) * (Number(r.qty) || 0) : 0); }, Number(P.ent.base) || 0); }
   function visibleLines() { return LINES; }
   var GROUPS = [[false, 'Products', 'annual licenses'], [true, 'Implementation and development', 'one-time']];
   function groupHead(g, cols) { return '<tr class="grp"><td colspan="' + cols + '">' + g[1] + ' <span>' + g[2] + '</span></td></tr>'; }
@@ -147,7 +152,7 @@ window.DSCalc = (function () {
     if (target >= base) rows.forEach(function (r) { var st = o.lines[r.key]; st.price = Math.round(linePrice(o, r.key) * target / base); st.conc = 0; });
     else { var d = Math.round((1 - target / base) * 1e6) / 1e4; rows.forEach(function (r) { o.lines[r.key].conc = d; }); }
   }
-  function lineOn(o, l) { var st = o.lines[l.key] || {}; return l.rom ? (st.romOn == null ? scopeLevel() === 'custom' : !!st.romOn) : !!st.on; }
+  function lineOn(o, l) { var st = o.lines[l.key] || {}; return l.rom ? !!st.romOn : !!st.on; }
   function lineRetail(o, key) {
     var ov = o.lines[key] && o.lines[key].retail; if (ov != null && ov !== '') return Number(ov) || 0;
     if (P.tab === 'enterprise' && key === 'Inbound') return entTotal();
@@ -188,7 +193,8 @@ window.DSCalc = (function () {
   }
 
   /* ---------- render ---------- */
-  var rendering = false;
+  var rendering = false, OPEN = { scope: false, tiers: false, terms: false };
+  function fold(key, title, sum, body) { return '<details class="card fold" data-fold="' + key + '"' + (OPEN[key] ? ' open' : '') + '><summary class="card-h"><span class="fold-t">' + title + '</span>' + (sum ? '<span class="fold-sum">' + sum + '</span>' : '') + '</summary><div class="card-b">' + body + '</div></details>'; }
   function render() {
     if (!mounted || !P) return;
     var box = $('pricing'); if (!box || box.hidden) return;
@@ -204,25 +210,26 @@ window.DSCalc = (function () {
           (c.items && c.items.length ? '<span class="gate-items">' + c.items.map(function (i) { return '<a href="#" data-goitem="' + i.id + '">' + esc(i.t) + '</a>'; }).join('') + '</span>' : '') + '</span></li>';
       }).join('') + '</ul>' +
       '<div class="card-b"><button class="btn primary" type="button" id="p-approve"' + (g.ok && P.status !== 'approved' ? '' : ' disabled') + ' style="width:100%;justify-content:center">' + (P.status === 'approved' ? 'Approved' : 'Approve pricing and save') + '</button>' +
-      '<p class="hint" style="margin:8px 0 0">Approving saves the intake and writes the primary option to the HubSpot deal and company (Sales Intake card). Any later change sets it back to draft.</p></div></div>';
+      '<p class="hint" style="margin:8px 0 0">Saves and writes the primary option to HubSpot. Any later change sets it back to draft.</p></div></div>';
     var pt = totals(P.opts[P.primary]);
     h += '<div class="card"><div class="card-h">Primary option</div><div class="card-b"><div class="pk"><b>' + esc(P.opts[P.primary].name) + '</b></div>' +
       '<div class="pk-row"><span>Annual</span><b>' + money(pt.annual) + '</b></div><div class="pk-row"><span>One-time</span><b>' + money(pt.oneTime) + '</b></div><div class="pk-row"><span>Total over ' + pt.years + ' yr</span><b>' + money(pt.tcv) + '</b></div></div></div>';
     h += '</aside><main class="calc-main">';
 
-    // scope
-    h += '<section class="card"><div class="card-h">Scope check</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Is this routine, or do we phone a friend? Boxes marked <span class="src-tag">intake</span> come from the answers on the intake tab; you can override any of them.</p><div class="scope-grid">' +
+    // scope (folded; the intake only suggests)
+    var pend = pendingScope();
+    var verdict = lvl === 'routine' ? 'Routine: the Standard tab prices this.' : lvl === 'enterprise' ? 'Enterprise: consider the Enterprise tab (campuses, portals, tech stack).' : 'Custom work: bring in a Solutions Engineer before a number goes out.';
+    var scopeBody = '<p class="hint" style="margin:0 0 8px">Tick what applies. <span class="warn-tag">&#9888; suggested</span> means the intake answers point to it; nothing changes the price until you tick it.</p><div class="scope-grid">' +
       SCOPE.map(function (s) {
-        var on = scopeOn(s.q), why = auto[s.q], ov = P.scopeOverride[s.q];
-        return '<label class="scope-q' + (on ? ' on' : '') + '"><input type="checkbox" data-scope="' + s.q + '"' + (on ? ' checked' : '') + '><span>' + esc(s.label) + (why ? ' <span class="src-tag" title="' + esc(why) + '">intake</span>' : '') + (ov === true || ov === false ? ' <span class="src-tag rep">rep</span>' : '') + (why ? '<small>' + esc(why) + '</small>' : '') + '</span></label>';
-      }).join('') + '</div>' +
-      '<div class="verdict ' + lvl + '">' + (lvl === 'routine' ? 'Routine: the Standard tab prices this, no one else needed.' : lvl === 'enterprise' ? 'Enterprise: price it on the Enterprise tab with campuses, portals and the tech stack. No custom development so far.' : 'Custom development: bring in a Solutions Engineer before a number goes out. A rough order of magnitude is added as a one-time line.') + '</div>';
+        var on = scopeOn(s.q), why = auto[s.q];
+        return '<label class="scope-q' + (on ? ' on' : '') + (why && !on ? ' sug' : '') + '"><input type="checkbox" data-scope="' + s.q + '"' + (on ? ' checked' : '') + '><span>' + esc(s.label) + (why && !on ? ' <span class="warn-tag" title="' + esc(why) + '">&#9888; suggested</span>' : '') + (why ? '<small>' + esc(why) + '</small>' : '') + '</span></label>';
+      }).join('') + '</div><div class="verdict ' + lvl + '">' + verdict + '</div>';
     if (lvl === 'custom') {
-      h += '<div class="rom"><div class="row3"><label>Low ($)<input class="t" type="number" step="5000" data-rom="lo" value="' + P.rom.lo + '"></label><label>High ($)<input class="t" type="number" step="5000" data-rom="hi" value="' + P.rom.hi + '"></label><label>Likelihood of the high case (%)<input class="t" type="number" min="0" max="100" step="5" data-rom="p" value="' + P.rom.p + '"></label></div>' +
-        '<p class="hint" style="margin:6px 0 0">Expected one-time custom development: <b>' + money(romExpected()) + '</b>. It stays a rough order of magnitude until the SE replaces it with a scoped estimate.</p>' +
-        '<label class="se"><input type="checkbox" id="p-se"' + (P.seReviewed ? ' checked' : '') + '> A Solutions Engineer reviewed the custom scope and the ROM (required before approving)</label></div>';
+      scopeBody += '<div class="rom"><div class="row3"><label>Low ($)<input class="t" type="number" step="5000" data-rom="lo" value="' + P.rom.lo + '"></label><label>High ($)<input class="t" type="number" step="5000" data-rom="hi" value="' + P.rom.hi + '"></label><label>Likelihood of the high case (%)<input class="t" type="number" min="0" max="100" step="5" data-rom="p" value="' + P.rom.p + '"></label></div>' +
+        '<p class="hint" style="margin:6px 0 0">Rough order of magnitude for custom development: <b>' + money(romExpected()) + '</b>. Add it from Products only if the deal needs engineering beyond implementation.</p>' +
+        '<label class="se"><input type="checkbox" id="p-se"' + (P.seReviewed ? ' checked' : '') + '> A Solutions Engineer reviewed the custom scope (required before approving)</label></div>';
     }
-    h += '</div></section>';
+    h += fold('scope', 'Scope check', '<span class="verdict-chip ' + lvl + '">' + (lvl === 'routine' ? 'Routine' : lvl === 'enterprise' ? 'Enterprise' : 'Custom') + '</span>' + (pend.length ? '<span class="warn-tag">&#9888; ' + pend.length + ' suggested by the intake</span>' : ''), scopeBody);
 
     // model + options
     h += '<div class="calc-bar"><div class="seg" role="tablist"><button type="button" data-ptab="standard" class="' + (P.tab === 'standard' ? 'on' : '') + '">Standard</button><button type="button" data-ptab="enterprise" class="' + (P.tab === 'enterprise' ? 'on' : '') + '">Enterprise</button></div>' +
@@ -232,37 +239,37 @@ window.DSCalc = (function () {
     // inputs
     h += '<div class="calc-grid"><section class="card"><div class="card-h">' + (P.tab === 'standard' ? 'Standard: one school, college, or university' : 'Enterprise: systems, multi-campus and tech stack') + '</div><div class="card-b">' +
       '<div class="row2"><label>Institution<input class="t" type="text" data-p="inst" value="' + esc(P.inst) + '"></label><label>Short name<input class="t" type="text" data-p="abbr" value="' + esc(P.abbr) + '"></label></div>' +
-      '<div class="row2"><label>Full-time enrollment (FTE)' + (P.fteSource ? ' <span class="src-tag">' + esc(P.fteSource) + '</span>' : '') + '<input class="t" type="number" min="0" step="50" data-p="fte" value="' + (P.fte || '') + '" placeholder="Required"></label>' +
+      '<div class="row2"><label>Headcount (FTE enrollment)' + (P.fteSource ? ' <span class="src-tag">' + esc(P.fteSource) + '</span>' : '') + '<input class="t" type="number" min="0" step="50" data-p="fte" value="' + (P.fte || '') + '" placeholder="Required"></label>' +
       '<label>Contract term<select class="t" data-o="term">' + [1, 2, 3, 4, 5].map(function (y) { return '<option value="' + y * 12 + '"' + (o.term === y * 12 ? ' selected' : '') + '>' + y + ' year' + (y > 1 ? 's' : '') + '</option>'; }).join('') + '</select></label></div>' +
-      '<div class="row2"><label>Protected pricing<select class="t" data-o="prot"><option value="1"' + (o.prot ? ' selected' : '') + '>Yes (use the floor)</option><option value="0"' + (!o.prot ? ' selected' : '') + '>No (workbook tier)</option></select></label><label>Option name<input class="t" type="text" data-o="name" value="' + esc(o.name) + '"></label></div>' +
+      '<div class="row2"><label>Protected pricing<select class="t" data-o="prot"><option value="1"' + (o.prot ? ' selected' : '') + '>Yes: protected rate (lower, e.g. faith-based)</option><option value="0"' + (!o.prot ? ' selected' : '') + '>No: standard rate (higher)</option></select></label><label>Option name<input class="t" type="text" data-o="name" value="' + esc(o.name) + '"></label></div>' +
       '<label class="prim"><input type="checkbox" id="p-primary"' + (P.primary === P.cur ? ' checked' : '') + '> Primary option (syncs to HubSpot)</label>' +
       (o.term > 12 ? '<div class="mybadge">Multi-year pricing: ' + (o.term / 12) + ' year term, price locked</div>' : '');
     if (P.tab === 'enterprise') {
       h += '<div class="sub-h">Tech stack' + (P.ent.stackFromIntake ? ' <span class="src-tag">intake items 5 and 6</span>' : '') + '</div>' +
         '<div class="row3">' + [['sis', 'SIS'], ['crm', 'CRM'], ['audit', 'Degree audit']].map(function (k) { return '<label>' + k[1] + '<select class="t" data-ent="' + k[0] + '">' + STACK[k[0]].map(function (r) { return '<option' + (P.ent[k[0]] === r[0] ? ' selected' : '') + '>' + esc(r[0]) + '</option>'; }).join('') + '</select></label>'; }).join('') + '</div>' +
         '<div class="row3"><label>Platform base (annual)<input class="t" type="number" step="1000" data-ent="base" value="' + P.ent.base + '"></label><label>Campuses<input class="t" type="number" min="1" step="1" data-ent="campuses" value="' + P.ent.campuses + '"></label><label>Portals<input class="t" type="number" min="1" step="1" data-ent="portals" value="' + P.ent.portals + '"></label></div>' +
-        '<p class="hint" style="margin:8px 0 4px">Integration components (annual). Guesstimated rates, editable per line until the implementation team signs a rate card.</p>' +
-        '<div class="ent-rows">' + entRows().map(function (r) { return '<div class="ent-row"><span>' + esc(r.name) + '</span><input class="t num" type="number" step="500" data-rate="' + r.key + '" value="' + r.rate + '" aria-label="Rate"><span class="q">&times; ' + r.qty + '</span><b>' + money(r.rate * r.qty) + '</b></div>'; }).join('') + '</div>' +
+        '<p class="hint" style="margin:8px 0 4px">Integration components (annual). Untick anything they do not need; rates are placeholders until the implementation team signs a rate card.</p>' +
+        '<div class="ent-rows">' + entRows().map(function (r) { var on = entOn(r); return '<div class="ent-row' + (on ? '' : ' off') + '"><label class="ent-on"><input type="checkbox" data-enton="' + r.key + '"' + (on ? ' checked' : '') + (r.qty > 0 ? '' : ' disabled') + '> ' + esc(r.name) + '</label><input class="t num" type="number" step="500" data-rate="' + r.key + '" value="' + r.rate + '" aria-label="Rate"><span class="q">&times; ' + r.qty + '</span><b>' + money(on ? r.rate * r.qty : 0) + '</b></div>'; }).join('') + '</div>' +
         '<p class="hint" style="margin:6px 0 0">Platform total (replaces the Inbound line): <b>' + money(entTotal()) + '</b> per year.</p>';
     }
     h += GROUPS.map(function (g) { return '<div class="sub-h">' + g[1] + ' <span class="muted" style="font-weight:500">(' + g[2] + ')</span></div>' + (g[0] ? '' : '<p class="hint" style="margin:0 0 6px">Insight includes Inbound. Custom is a blank line you name (for example an AACRAO member credit).</p>') + '<div class="prods">' +
       visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
         var st = o.lines[l.key], on = lineOn(o, l);
         if (l.custom) return '<label class="prod-c"><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '><input class="t" type="text" data-customname="1" placeholder="Custom line name" value="' + esc(o.customName) + '"></label>';
-        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '> ' + esc(lineLabel(o, l)) + '</label>';
+        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '> ' + esc(lineLabel(o, l)) + (l.rom && !on && lvl === 'custom' ? ' <span class="warn-tag" title="The scope check says custom work. Add it only if the deal needs engineering beyond implementation.">&#9888; scope says custom</span>' : '') + '</label>';
       }).join('') + '</div>'; }).join('') + '</div></section>';
 
     // tier table
-    h += '<section class="card"><div class="card-h">Per product price at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE') + '</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Tier is the workbook step function (rate per FTE, with minimums). Curve is the smooth regression used as the protected floor. Implementation comes from the proposal bands. Every retail price here is editable; clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
+    h += fold('tiers', 'Retail prices at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE'), 'Edit any retail price', '<p class="hint" style="margin:0 0 8px">Tier is the workbook rate per FTE; Curve is the smooth model. Protected pricing takes the lower of the two, standard the higher. Implementation comes from the size bands. Clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
       '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Tier</th><th class="r">Curve</th><th class="r">Retail</th></tr></thead><tbody>' +
       GROUPS.map(function (g) { return groupHead(g, 4) + visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
         var on = lineOn(o, l), tp = tierPrice(l.key, P.fte), cp = curvePrice(l.key, P.fte), ov = o.lines[l.key].retail;
         return '<tr class="' + (on ? '' : 'off') + '"><td>' + esc(lineLabel(o, l)) + '</td><td class="r">' + (tp === null || !P.fte ? '-' : money(tp)) + '</td><td class="r">' + (cp === null || !P.fte ? '-' : money(cp)) + '</td><td class="r"><input class="t num' + (ov != null ? ' edited' : '') + '" type="number" step="100" data-retail="' + l.key + '" value="' + Math.round(lineRetail(o, l.key)) + '" aria-label="Retail for ' + esc(lineLabel(o, l)) + '"' + (ov != null ? ' title="Edited. Clear the box to go back to the calculated price."' : '') + '></td></tr>';
-      }).join(''); }).join('') + '</tbody></table></div></div></section></div>';
+      }).join(''); }).join('') + '</tbody></table></div>') + '</div>';
 
     // negotiation table
     var t = totals(o);
-    h += '<section class="card"><div class="card-h">Annual schedule and per-line concessions</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Set the price per line and a concession, or work backwards: type the total you want on a line, or the annual or one-time total, and the concession is calculated for you. On the proposal only the percentage shows, behind the number, on the line where you call it out.</p>' +
+    h += '<section class="card"><div class="card-h">Annual schedule and per-line concessions</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Type a price, a concession, or the total you want (per line, or the annual or one-time total) and the rest is worked out. The proposal shows only the school price and the % off.</p>' +
       '<div class="tbl"><table class="pt neg"><thead><tr><th>Line</th><th class="r">Retail</th><th class="r">' + esc(P.abbr || 'School') + ' price</th><th>Concession</th><th>Reason shown on proposal</th><th class="r">Total</th></tr></thead><tbody>' +
       (t.rows.length ? GROUPS.map(function (g) {
         var rs = t.rows.filter(function (r) { return !!r.oneTime === g[0]; }); if (!rs.length) return '';
@@ -282,11 +289,12 @@ window.DSCalc = (function () {
       '<div class="kpi"><div class="l">Total over term</div><div class="v">' + money(t.tcv) + '</div><div class="s">' + (P.flags.tcv ? 'Printed on the proposal' : 'Internal only') + '</div></div></div></div></section>';
 
     // proposal terms
-    h += '<section class="card"><div class="card-h">Proposal terms</div><div class="card-b"><div class="row2"><label>Pricing note (printed under the quote)<textarea class="t" data-p="note" placeholder="Explain any concession, for example: AACRAO member credit applied to Inbound for the initial term.">' + esc(P.note) + '</textarea></label><div class="flags-c">' +
-      [['lock', 'Lifetime Pricing Guarantee (price lock for the term)'], ['roi', 'Performance Out and Guaranteed ROI'], ['tcv', 'Show total over the term on the proposal'], ['disc', 'Show market rate and savings on the proposal'], ['check', 'Accept check in addition to ACH'], ['msa', 'Append the MSA (April 2026)']].map(function (f) { return '<label><input type="checkbox" data-flag="' + f[0] + '"' + (P.flags[f[0]] ? ' checked' : '') + '> ' + esc(f[1]) + '</label>'; }).join('') +
+    var termsOn = [['lock', 'Price lock'], ['roi', 'ROI out'], ['msa', 'MSA'], ['itemize', 'One-time lines itemized']].filter(function (f) { return P.flags[f[0]]; }).map(function (f) { return f[1]; });
+    h += fold('terms', 'Proposal terms', esc(termsOn.join(' · ')), '<div class="row2"><label>Pricing note (printed under the quote)<textarea class="t" data-p="note" placeholder="Explain any concession, for example: AACRAO member credit applied to Inbound for the initial term.">' + esc(P.note) + '</textarea></label><div class="flags-c">' +
+      [['lock', 'Lifetime Pricing Guarantee (price lock for the term)'], ['roi', 'Performance Out and Guaranteed ROI'], ['tcv', 'Show total over the term on the proposal'], ['disc', 'Show market rate and savings on the proposal'], ['check', 'Accept check in addition to ACH'], ['msa', 'Append the MSA (April 2026)'], ['itemize', 'Itemize the one-time lines (default: one implementation fee)']].map(function (f) { return '<label><input type="checkbox" data-flag="' + f[0] + '"' + (P.flags[f[0]] ? ' checked' : '') + '> ' + esc(f[1]) + '</label>'; }).join('') +
       (P.flags.msa ? '<label class="eff">MSA effective date<select class="t" data-eff="mode"><option value="execution"' + (P.eff.mode === 'execution' ? ' selected' : '') + '>Date of execution</option><option value="custom"' + (P.eff.mode === 'custom' ? ' selected' : '') + '>Custom date</option><option value="other"' + (P.eff.mode === 'other' ? ' selected' : '') + '>Other wording</option></select>' +
         (P.eff.mode === 'custom' ? '<input class="t" type="date" data-eff="date" value="' + esc(P.eff.date) + '">' : '') + (P.eff.mode === 'other' ? '<input class="t" type="text" data-eff="other" placeholder="e.g. the first day of the Spring 2027 term" value="' + esc(P.eff.other) + '">' : '') + '</label>' : '') +
-      '</div></div><p class="hint" style="margin:10px 0 0">These terms are stored with the pricing for the proposal. Standard tab reproduces PRICING MATRIX.xlsx (beta v0.3); Enterprise is Woody\'s model v2 with placeholder rates.</p></div></section>';
+      '</div></div><p class="hint" style="margin:10px 0 0">These terms are stored with the pricing for the proposal. Standard tab reproduces PRICING MATRIX.xlsx (beta v0.3); Enterprise is Woody\'s model v2 with placeholder rates.</p>');
     h += '</main></div>';
     // Replacing the DOM blurs a focused input, which fires its change event and asks for another render mid-swap.
     if (rendering) return; rendering = true; try { box.innerHTML = h; } finally { rendering = false; }
@@ -305,7 +313,7 @@ window.DSCalc = (function () {
   }
   function onChange(e) {
     var t = e.target, o = P.opts[P.cur];
-    if (t.matches('[data-scope]')) { var q = t.getAttribute('data-scope'), autoOn = !!autoScope()[q]; P.scopeOverride[q] = t.checked === autoOn ? null : t.checked; if (q === 'campuses' || q === 'portals') { if (t.checked && P.tab === 'standard') P.tab = 'enterprise'; } touch(); return; }
+    if (t.matches('[data-scope]')) { P.scopeOverride[t.getAttribute('data-scope')] = t.checked; touch(); return; }
     if (t.matches('[data-p="fte"]')) { P.fte = Math.max(0, num(t.value)); P.fteSource = 'rep'; touch(); return; }
     if (t.matches('[data-conc], [data-concn]')) { touch(); return; }
     if (t.matches('[data-total]')) { if (String(t.value).trim() !== '') setLineTotal(o, t.getAttribute('data-total'), num(t.value)); touch(); return; }
@@ -317,6 +325,7 @@ window.DSCalc = (function () {
     if (t.matches('[data-o="name"]')) { render(); return; }
     if (t.id === 'p-primary') { P.primary = P.cur; touch(); return; }
     if (t.matches('[data-ent]')) { var k = t.getAttribute('data-ent'); if (k === 'sis' || k === 'crm' || k === 'audit') { P.ent[k] = t.value; delete P.ent.rate[k]; } else P.ent[k] = k === 'base' ? num(t.value) : Math.max(1, num(t.value)); touch(); return; }
+    if (t.matches('[data-enton]')) { P.ent.off = P.ent.off || {}; P.ent.off[t.getAttribute('data-enton')] = !t.checked; touch(); return; }
     if (t.matches('[data-rate]')) { P.ent.rate[t.getAttribute('data-rate')] = num(t.value); touch(); return; }
     if (t.matches('[data-line]')) { var lk = t.getAttribute('data-line'), ll = LINES.filter(function (x) { return x.key === lk; })[0]; if (ll && ll.rom) o.lines[lk].romOn = t.checked; else o.lines[lk].on = t.checked; touch(); return; }
     if (t.matches('[data-retail]')) { var rk = t.getAttribute('data-retail'), rs = o.lines[rk]; rs.retail = String(t.value).trim() === '' ? null : num(t.value); rs.price = null; touch(); return; }
@@ -366,6 +375,7 @@ window.DSCalc = (function () {
       box.addEventListener('input', onInput);
       box.addEventListener('change', onChange);
       box.addEventListener('click', onClick);
+      box.addEventListener('toggle', function (e) { var d = e.target; if (d && d.getAttribute && d.getAttribute('data-fold')) OPEN[d.getAttribute('data-fold')] = d.open; }, true);
     },
     load: function (saved) { P = saved && saved.v ? saved : fresh(); if (!P.scopeOverride) P.scopeOverride = {}; if (P.cur >= P.opts.length) P.cur = 0; render(); },
     state: function () { return P; },

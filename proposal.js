@@ -100,10 +100,18 @@ window.DSProposal = (function () {
         '<div class="cards three" style="margin:10px 0"><div class="card"><div class="ml">Effective date</div><div class="mv">' + esc(pd.effText === 'date of execution' ? 'Date of execution' : pd.effText) + '</div></div><div class="card"><div class="ml">Term length</div><div class="mv">' + o.years + ' year' + (o.years > 1 ? 's' : '') + '</div></div>' +
         (o.term > 12 ? '<div class="card"><div class="ml">Multi-year</div><span class="mybadge"><span class="coin">$</span>Multi-year pricing, locked for the term</span></div>' : '<div class="card"><div class="ml">Protected pricing</div><div class="mv">' + (o.prot ? 'Yes' : 'No') + '</div></div>') + '</div>';
       h += '<table class="prod"><thead><tr><th>Products and Pricing</th>' + (showDisc ? '<th class="n">Market rate</th><th class="n">Your savings</th><th class="n">Your rate</th>' : '<th class="n">Price</th>') + '</tr></thead>';
-      var lastGrp = null;
-      o.rows.forEach(function (r) {
+      var lastGrp = null, rows = o.rows;
+      // By default the school sees one implementation fee; the breakdown stays internal unless the rep itemizes it.
+      var one = rows.filter(function (r) { return r.oneTime; });
+      if (!f.itemize && one.length > 1) {
+        var q = 0, rt = 0, list = 0, reasons = [];
+        one.forEach(function (r) { q += r.q; rt += r.rt; list += r.conc >= 100 ? r.rt : (r.conc ? r.q / (1 - r.conc / 100) : r.q); if (r.reason && reasons.indexOf(r.reason) < 0) reasons.push(r.reason); });
+        var conc = list > 0 && list - q > 0.5 ? Math.round((1 - q / list) * 10000) / 100 : 0;
+        rows = rows.filter(function (r) { return !r.oneTime; }).concat([{ key: 'Installation', label: 'One-Time Implementation', rt: rt, q: q, conc: conc, reason: reasons.join('; '), oneTime: true }]);
+      }
+      rows.forEach(function (r) {
         var grp = r.oneTime ? 'Implementation and development (one-time)' : 'Products (annual licenses)';
-        if (grp !== lastGrp && o.rows.some(function (x) { return !!x.oneTime !== !!r.oneTime; })) h += '<tbody><tr class="grp"><td colspan="' + cols + '">' + grp + '</td></tr></tbody>';
+        if (grp !== lastGrp && rows.some(function (x) { return !!x.oneTime !== !!r.oneTime; })) h += '<tbody><tr class="grp"><td colspan="' + cols + '">' + grp + '</td></tr></tbody>';
         lastGrp = grp;
         var name = r.key === 'Custom' ? (o.customName || 'Custom') : (NAME[r.key] || r.label), per = r.oneTime ? '' : ' / year';
         var tag = r.conc ? ' <span class="conc">' + r.conc + '% off' + (r.reason ? ', ' + esc(r.reason) : '') + '</span>' : '';

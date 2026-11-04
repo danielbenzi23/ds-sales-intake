@@ -145,3 +145,8 @@ textarea.t { min-height: 38px; resize: vertical; }
 @media print { .top-actions, .left, .right .src-list, .notes summary { display: none !important; } .wrap { display: block; } .top { position: static; } }
 .back-link { color: #CBD5E1; text-decoration: none; font-weight: 600; font-size: 13px; padding: 6px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; white-space: nowrap; }
 .back-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+.guide { margin: 8px 0 0 40px; }
+.guide > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.guide .hint, .guide .say { margin-left: 0; }
+@media (max-width: 820px) { .guide { margin-left: 0; } }
+@media print { .guide { display: none; } }
