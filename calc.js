@@ -135,6 +135,16 @@ window.DSCalc = (function () {
   }
   function entTotal() { return entRows().reduce(function (t, r) { return t + (Number(r.rate) || 0) * (Number(r.qty) || 0); }, Number(P.ent.base) || 0); }
   function visibleLines() { return LINES; }
+  function pct(c) { return Math.round((Number(c) || 0) * 100) / 100; }
+  function linePrice(o, key) { var st = o.lines[key]; return st.price == null ? Math.round(lineRetail(o, key)) : st.price; }
+  // Reverse math: hit a target total by working out the concession; a target above the price raises the price instead.
+  function setLineTotal(o, key, target) { var st = o.lines[key], price = linePrice(o, key); target = Math.max(0, target); if (target >= price || price <= 0) { st.price = Math.round(target); st.conc = 0; } else st.conc = Math.round((1 - target / price) * 1e6) / 1e4; }
+  function setGroupTotal(o, oneTime, target) {
+    var rows = totals(o).rows.filter(function (r) { return !!r.oneTime === oneTime; }); if (!rows.length) return;
+    var base = rows.reduce(function (a, r) { return a + linePrice(o, r.key); }, 0); target = Math.max(0, target); if (base <= 0) return;
+    if (target >= base) rows.forEach(function (r) { var st = o.lines[r.key]; st.price = Math.round(linePrice(o, r.key) * target / base); st.conc = 0; });
+    else { var d = Math.round((1 - target / base) * 1e6) / 1e4; rows.forEach(function (r) { o.lines[r.key].conc = d; }); }
+  }
   function lineOn(o, l) { var st = o.lines[l.key] || {}; return l.rom ? (st.romOn == null ? scopeLevel() === 'custom' : !!st.romOn) : !!st.on; }
   function lineRetail(o, key) {
     var ov = o.lines[key] && o.lines[key].retail; if (ov != null && ov !== '') return Number(ov) || 0;
@@ -149,7 +159,7 @@ window.DSCalc = (function () {
       var st = o.lines[l.key]; if (!lineOn(o, l)) return;
       var rt = lineRetail(o, l.key), price = st.price == null ? Math.round(rt) : st.price, q = price * (1 - (st.conc || 0) / 100);
       if (l.oneTime) oneTime += q; else { annual += q; retailAnnual += rt; }
-      rows.push({ key: l.key, label: lineLabel(o, l), rt: rt, q: q, conc: st.conc, reason: st.reason, oneTime: !!l.oneTime });
+      rows.push({ key: l.key, label: lineLabel(o, l), rt: rt, q: q, conc: pct(st.conc), reason: st.reason, oneTime: !!l.oneTime });
     });
     var years = o.term / 12;
     return { annual: annual, oneTime: oneTime, retailAnnual: retailAnnual, rows: rows, years: years, tcv: annual * years + oneTime };
@@ -250,16 +260,18 @@ window.DSCalc = (function () {
 
     // negotiation table
     var t = totals(o);
-    h += '<section class="card"><div class="card-h">Annual schedule and per-line concessions</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Set the price per line. The concession slider models competitive scenarios; on the proposal only the percentage shows, behind the number, on the line where you call it out.</p>' +
+    h += '<section class="card"><div class="card-h">Annual schedule and per-line concessions</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Set the price per line and a concession, or work backwards: type the total you want on a line, or the annual or one-time total, and the concession is calculated for you. On the proposal only the percentage shows, behind the number, on the line where you call it out.</p>' +
       '<div class="tbl"><table class="pt neg"><thead><tr><th>Line</th><th class="r">Retail</th><th class="r">' + esc(P.abbr || 'School') + ' price</th><th>Concession</th><th>Reason shown on proposal</th><th class="r">Total</th></tr></thead><tbody>' +
       (t.rows.length ? t.rows.map(function (r) {
         var st = o.lines[r.key], price = st.price == null ? Math.round(r.rt) : st.price;
         return '<tr><td>' + esc(r.label) + (r.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</td><td class="r">' + money(r.rt) + '</td>' +
           '<td class="r"><input class="t num" type="number" step="100" data-price="' + r.key + '" value="' + price + '"></td>' +
-          '<td class="conc"><input type="range" min="0" max="100" step="1" data-conc="' + r.key + '" value="' + (st.conc || 0) + '" aria-label="Concession"><input class="t conc-n" type="number" min="0" max="100" step="1" data-concn="' + r.key + '" value="' + (st.conc || 0) + '" aria-label="Concession percent"><span>%</span></td>' +
-          '<td><input class="t" type="text" data-reason="' + r.key + '" placeholder="e.g. AACRAO member credit" value="' + esc(st.reason) + '"></td><td class="r"><b>' + money(r.q) + '</b></td></tr>';
+          '<td class="conc"><input type="range" min="0" max="100" step="any" data-conc="' + r.key + '" value="' + pct(st.conc) + '" aria-label="Concession"><input class="t conc-n" type="number" min="0" max="100" step="any" data-concn="' + r.key + '" value="' + pct(st.conc) + '" aria-label="Concession percent"><span>%</span></td>' +
+          '<td><input class="t" type="text" data-reason="' + r.key + '" placeholder="e.g. AACRAO member credit" value="' + esc(st.reason) + '"></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-total="' + r.key + '" value="' + Math.round(r.q) + '" aria-label="Total for ' + esc(r.label) + '"></td></tr>';
       }).join('') : '<tr><td colspan="6" class="muted">Select at least one product.</td></tr>') +
-      '<tr class="total"><td colspan="5">Annual total' + (t.oneTime ? ' (plus ' + money(t.oneTime) + ' one-time)' : '') + '</td><td class="r">' + money(t.annual) + '</td></tr></tbody></table></div>' +
+      (t.rows.some(function (r) { return !r.oneTime; }) ? '<tr class="total"><td colspan="5">Annual total <span class="hint">type a target to spread the same concession across the annual lines</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="annual" value="' + Math.round(t.annual) + '" aria-label="Annual total"></td></tr>' : '') +
+      (t.rows.some(function (r) { return r.oneTime; }) ? '<tr class="total"><td colspan="5">One-time total <span class="hint">same, across the one-time lines</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="onetime" value="' + Math.round(t.oneTime) + '" aria-label="One-time total"></td></tr>' : '') +
+      '</tbody></table></div>' +
       '<div class="kpis"><div class="kpi"><div class="l">Annual</div><div class="v">' + money(t.annual) + '</div><div class="s">Billed annually for ' + t.years + ' year' + (t.years > 1 ? 's' : '') + '</div></div>' +
       '<div class="kpi"><div class="l">One-time</div><div class="v">' + money(t.oneTime) + '</div><div class="s">Installation and services</div></div>' +
       '<div class="kpi"><div class="l">Total over term</div><div class="v">' + money(t.tcv) + '</div><div class="s">' + (P.flags.tcv ? 'Printed on the proposal' : 'Internal only') + '</div></div></div></div></section>';
@@ -284,13 +296,15 @@ window.DSCalc = (function () {
     if (t.matches('[data-reason]')) { o.lines[t.getAttribute('data-reason')].reason = t.value; if (host) host.dirty(); return; }
     if (t.matches('[data-customname]')) { o.customName = t.value; if (host) host.dirty(); return; }
     if (t.matches('[data-conc]')) { o.lines[t.getAttribute('data-conc')].conc = num(t.value); var nb = t.nextElementSibling; if (nb) nb.value = t.value; if (host) host.dirty(); return; }
-    if (t.matches('[data-concn]')) { var cv = Math.max(0, Math.min(100, Math.round(num(t.value)))); o.lines[t.getAttribute('data-concn')].conc = cv; var sl = t.previousElementSibling; if (sl) sl.value = cv; if (host) host.dirty(); return; }
+    if (t.matches('[data-concn]')) { var cv = Math.max(0, Math.min(100, Math.round(num(t.value) * 100) / 100)); o.lines[t.getAttribute('data-concn')].conc = cv; var sl = t.previousElementSibling; if (sl) sl.value = cv; if (host) host.dirty(); return; }
   }
   function onChange(e) {
     var t = e.target, o = P.opts[P.cur];
     if (t.matches('[data-scope]')) { var q = t.getAttribute('data-scope'), autoOn = !!autoScope()[q]; P.scopeOverride[q] = t.checked === autoOn ? null : t.checked; if (q === 'campuses' || q === 'portals') { if (t.checked && P.tab === 'standard') P.tab = 'enterprise'; } touch(); return; }
     if (t.matches('[data-p="fte"]')) { P.fte = Math.max(0, num(t.value)); P.fteSource = 'rep'; touch(); return; }
     if (t.matches('[data-conc], [data-concn]')) { touch(); return; }
+    if (t.matches('[data-total]')) { if (String(t.value).trim() !== '') setLineTotal(o, t.getAttribute('data-total'), num(t.value)); touch(); return; }
+    if (t.matches('[data-grouptotal]')) { if (String(t.value).trim() !== '') setGroupTotal(o, t.getAttribute('data-grouptotal') === 'onetime', num(t.value)); touch(); return; }
     if (t.matches('[data-rom]')) { P.rom[t.getAttribute('data-rom')] = num(t.value); touch(); return; }
     if (t.id === 'p-se') { P.seReviewed = t.checked; touch(); return; }
     if (t.matches('[data-o="term"]')) { o.term = num(t.value); touch(); return; }
