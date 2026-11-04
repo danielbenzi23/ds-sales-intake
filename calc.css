@@ -104,3 +104,5 @@ table.neg input.t[type=text] { min-width: 150px; }
 @media (max-width: 820px) { .top { position: static; } .views-in { padding: 8px 16px; } .views button { padding: 7px 13px; font-size: 13px; } }
 table.neg input.tot { max-width: 120px; font-weight: 700; }
 table.pt tr.total .hint { font-weight: 400; margin-left: 6px; }
+table.pt tr.grp td { background: var(--soft); font: 700 12px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--fg); padding: 8px; }
+table.pt tr.grp td span { font: 500 11px var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 4px; }

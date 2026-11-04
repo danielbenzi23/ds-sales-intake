@@ -23,12 +23,12 @@ window.DSCalc = (function () {
   var MIN = { Inbound: 6000, Insight: 25000 };
   var CURVE = { Inbound: { b: 60, e: 0.73, lo: 18000, hi: 100000 }, Insight: { b: 80, e: 0.745, lo: 25000, hi: 150000 }, Planner: { b: 250, e: 0.73, lo: 100000, hi: 500000 } };
   var LINES = [
-    { key: 'Installation', label: 'One-Time Installation', oneTime: true },
     { key: 'Inbound', label: 'DegreeSight "Inbound" - Annual License' },
     { key: 'Insight', label: 'DegreeSight "Insight" - Annual License' },
     { key: 'Planner', label: 'DegreeSight "Planner" - Annual License' },
-    { key: 'Consultative Services', label: 'Consultative Services', oneTime: true },
     { key: 'Custom', label: '', custom: true },
+    { key: 'Installation', label: 'One-Time Implementation', oneTime: true },
+    { key: 'Consultative Services', label: 'Consultative Services', oneTime: true },
     { key: 'Custom development', label: 'Custom Development (scoped by Solutions Engineering)', oneTime: true, rom: true }
   ];
   function tierFor(f) { for (var i = 0; i < TIERS.length; i++) if (f >= TIERS[i].lo && f <= TIERS[i].hi) return TIERS[i]; return TIERS[0]; }
@@ -135,6 +135,8 @@ window.DSCalc = (function () {
   }
   function entTotal() { return entRows().reduce(function (t, r) { return t + (Number(r.rate) || 0) * (Number(r.qty) || 0); }, Number(P.ent.base) || 0); }
   function visibleLines() { return LINES; }
+  var GROUPS = [[false, 'Products', 'annual licenses'], [true, 'Implementation and development', 'one-time']];
+  function groupHead(g, cols) { return '<tr class="grp"><td colspan="' + cols + '">' + g[1] + ' <span>' + g[2] + '</span></td></tr>'; }
   function pct(c) { return Math.round((Number(c) || 0) * 100) / 100; }
   function linePrice(o, key) { var st = o.lines[key]; return st.price == null ? Math.round(lineRetail(o, key)) : st.price; }
   // Reverse math: hit a target total by working out the concession; a target above the price raises the price instead.
@@ -243,37 +245,40 @@ window.DSCalc = (function () {
         '<div class="ent-rows">' + entRows().map(function (r) { return '<div class="ent-row"><span>' + esc(r.name) + '</span><input class="t num" type="number" step="500" data-rate="' + r.key + '" value="' + r.rate + '" aria-label="Rate"><span class="q">&times; ' + r.qty + '</span><b>' + money(r.rate * r.qty) + '</b></div>'; }).join('') + '</div>' +
         '<p class="hint" style="margin:6px 0 0">Platform total (replaces the Inbound line): <b>' + money(entTotal()) + '</b> per year.</p>';
     }
-    h += '<div class="sub-h">Products</div><p class="hint" style="margin:0 0 6px">Insight includes Inbound. Custom is a blank line you name (for example an AACRAO member credit).</p><div class="prods">' +
-      visibleLines().map(function (l) {
+    h += GROUPS.map(function (g) { return '<div class="sub-h">' + g[1] + ' <span class="muted" style="font-weight:500">(' + g[2] + ')</span></div>' + (g[0] ? '' : '<p class="hint" style="margin:0 0 6px">Insight includes Inbound. Custom is a blank line you name (for example an AACRAO member credit).</p>') + '<div class="prods">' +
+      visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
         var st = o.lines[l.key], on = lineOn(o, l);
         if (l.custom) return '<label class="prod-c"><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '><input class="t" type="text" data-customname="1" placeholder="Custom line name" value="' + esc(o.customName) + '"></label>';
-        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '> ' + esc(lineLabel(o, l)) + (l.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</label>';
-      }).join('') + '</div></div></section>';
+        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '> ' + esc(lineLabel(o, l)) + '</label>';
+      }).join('') + '</div>'; }).join('') + '</div></section>';
 
     // tier table
-    h += '<section class="card"><div class="card-h">Per product price at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE') + '</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Tier is the workbook step function (rate per FTE, with minimums). Curve is the smooth regression used as the protected floor. Installation comes from the proposal bands. Every retail price here is editable; clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
+    h += '<section class="card"><div class="card-h">Per product price at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE') + '</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Tier is the workbook step function (rate per FTE, with minimums). Curve is the smooth regression used as the protected floor. Implementation comes from the proposal bands. Every retail price here is editable; clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
       '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Tier</th><th class="r">Curve</th><th class="r">Retail</th></tr></thead><tbody>' +
-      visibleLines().map(function (l) {
+      GROUPS.map(function (g) { return groupHead(g, 4) + visibleLines().filter(function (l) { return !!l.oneTime === g[0]; }).map(function (l) {
         var on = lineOn(o, l), tp = tierPrice(l.key, P.fte), cp = curvePrice(l.key, P.fte), ov = o.lines[l.key].retail;
         return '<tr class="' + (on ? '' : 'off') + '"><td>' + esc(lineLabel(o, l)) + '</td><td class="r">' + (tp === null || !P.fte ? '-' : money(tp)) + '</td><td class="r">' + (cp === null || !P.fte ? '-' : money(cp)) + '</td><td class="r"><input class="t num' + (ov != null ? ' edited' : '') + '" type="number" step="100" data-retail="' + l.key + '" value="' + Math.round(lineRetail(o, l.key)) + '" aria-label="Retail for ' + esc(lineLabel(o, l)) + '"' + (ov != null ? ' title="Edited. Clear the box to go back to the calculated price."' : '') + '></td></tr>';
-      }).join('') + '</tbody></table></div></div></section></div>';
+      }).join(''); }).join('') + '</tbody></table></div></div></section></div>';
 
     // negotiation table
     var t = totals(o);
     h += '<section class="card"><div class="card-h">Annual schedule and per-line concessions</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Set the price per line and a concession, or work backwards: type the total you want on a line, or the annual or one-time total, and the concession is calculated for you. On the proposal only the percentage shows, behind the number, on the line where you call it out.</p>' +
       '<div class="tbl"><table class="pt neg"><thead><tr><th>Line</th><th class="r">Retail</th><th class="r">' + esc(P.abbr || 'School') + ' price</th><th>Concession</th><th>Reason shown on proposal</th><th class="r">Total</th></tr></thead><tbody>' +
-      (t.rows.length ? t.rows.map(function (r) {
+      (t.rows.length ? GROUPS.map(function (g) {
+        var rs = t.rows.filter(function (r) { return !!r.oneTime === g[0]; }); if (!rs.length) return '';
+        return groupHead(g, 6) + rs.map(function (r) {
         var st = o.lines[r.key], price = st.price == null ? Math.round(r.rt) : st.price;
-        return '<tr><td>' + esc(r.label) + (r.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</td><td class="r">' + money(r.rt) + '</td>' +
+        return '<tr><td>' + esc(r.label) + '' + '</td><td class="r">' + money(r.rt) + '</td>' +
           '<td class="r"><input class="t num" type="number" step="100" data-price="' + r.key + '" value="' + price + '"></td>' +
           '<td class="conc"><input type="range" min="0" max="100" step="any" data-conc="' + r.key + '" value="' + pct(st.conc) + '" aria-label="Concession"><input class="t conc-n" type="number" min="0" max="100" step="any" data-concn="' + r.key + '" value="' + pct(st.conc) + '" aria-label="Concession percent"><span>%</span></td>' +
           '<td><input class="t" type="text" data-reason="' + r.key + '" placeholder="e.g. AACRAO member credit" value="' + esc(st.reason) + '"></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-total="' + r.key + '" value="' + Math.round(r.q) + '" aria-label="Total for ' + esc(r.label) + '"></td></tr>';
+      }).join('') + (g[0]
+          ? '<tr class="total"><td colspan="5">One-time total <span class="hint">type a target to spread the same concession across implementation and development</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="onetime" value="' + Math.round(t.oneTime) + '" aria-label="One-time total"></td></tr>'
+          : '<tr class="total"><td colspan="5">Annual total <span class="hint">type a target to spread the same concession across the products</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="annual" value="' + Math.round(t.annual) + '" aria-label="Annual total"></td></tr>');
       }).join('') : '<tr><td colspan="6" class="muted">Select at least one product.</td></tr>') +
-      (t.rows.some(function (r) { return !r.oneTime; }) ? '<tr class="total"><td colspan="5">Annual total <span class="hint">type a target to spread the same concession across the annual lines</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="annual" value="' + Math.round(t.annual) + '" aria-label="Annual total"></td></tr>' : '') +
-      (t.rows.some(function (r) { return r.oneTime; }) ? '<tr class="total"><td colspan="5">One-time total <span class="hint">same, across the one-time lines</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="onetime" value="' + Math.round(t.oneTime) + '" aria-label="One-time total"></td></tr>' : '') +
       '</tbody></table></div>' +
       '<div class="kpis"><div class="kpi"><div class="l">Annual</div><div class="v">' + money(t.annual) + '</div><div class="s">Billed annually for ' + t.years + ' year' + (t.years > 1 ? 's' : '') + '</div></div>' +
-      '<div class="kpi"><div class="l">One-time</div><div class="v">' + money(t.oneTime) + '</div><div class="s">Installation and services</div></div>' +
+      '<div class="kpi"><div class="l">One-time</div><div class="v">' + money(t.oneTime) + '</div><div class="s">Implementation and development</div></div>' +
       '<div class="kpi"><div class="l">Total over term</div><div class="v">' + money(t.tcv) + '</div><div class="s">' + (P.flags.tcv ? 'Printed on the proposal' : 'Internal only') + '</div></div></div></div></section>';
 
     // proposal terms

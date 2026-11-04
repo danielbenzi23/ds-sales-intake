@@ -17,7 +17,7 @@ window.DSProposal = (function () {
     'Custom': 'Custom line as agreed with {SCHOOL}.',
     'Custom development': 'Custom development as scoped in the Solutions Engineering review: a rough order of magnitude until the stories and prototype are defined.'
   };
-  var NAME = { 'Installation': 'One-Time Installation', 'Inbound': 'DegreeSight "Inbound" - Annual License', 'Insight': 'DegreeSight "Insight" - Annual License', 'Planner': 'DegreeSight "Planner" - Annual License', 'Consultative Services': 'Consultative Services', 'Custom development': 'Custom Development (scoped by Solutions Engineering)' };
+  var NAME = { 'Installation': 'One-Time Implementation', 'Inbound': 'DegreeSight "Inbound" - Annual License', 'Insight': 'DegreeSight "Insight" - Annual License', 'Planner': 'DegreeSight "Planner" - Annual License', 'Consultative Services': 'Consultative Services', 'Custom development': 'Custom Development (scoped by Solutions Engineering)' };
 
   var host = null, X = null, mounted = false;
 
@@ -100,7 +100,11 @@ window.DSProposal = (function () {
         '<div class="cards three" style="margin:10px 0"><div class="card"><div class="ml">Effective date</div><div class="mv">' + esc(pd.effText === 'date of execution' ? 'Date of execution' : pd.effText) + '</div></div><div class="card"><div class="ml">Term length</div><div class="mv">' + o.years + ' year' + (o.years > 1 ? 's' : '') + '</div></div>' +
         (o.term > 12 ? '<div class="card"><div class="ml">Multi-year</div><span class="mybadge"><span class="coin">$</span>Multi-year pricing, locked for the term</span></div>' : '<div class="card"><div class="ml">Protected pricing</div><div class="mv">' + (o.prot ? 'Yes' : 'No') + '</div></div>') + '</div>';
       h += '<table class="prod"><thead><tr><th>Products and Pricing</th>' + (showDisc ? '<th class="n">Market rate</th><th class="n">Your savings</th><th class="n">Your rate</th>' : '<th class="n">Price</th>') + '</tr></thead>';
+      var lastGrp = null;
       o.rows.forEach(function (r) {
+        var grp = r.oneTime ? 'Implementation and development (one-time)' : 'Products (annual licenses)';
+        if (grp !== lastGrp && o.rows.some(function (x) { return !!x.oneTime !== !!r.oneTime; })) h += '<tbody><tr class="grp"><td colspan="' + cols + '">' + grp + '</td></tr></tbody>';
+        lastGrp = grp;
         var name = r.key === 'Custom' ? (o.customName || 'Custom') : (NAME[r.key] || r.label), per = r.oneTime ? '' : ' / year';
         var tag = r.conc ? ' <span class="conc">' + r.conc + '% off' + (r.reason ? ', ' + esc(r.reason) : '') + '</span>' : '';
         h += '<tbody><tr><td class="nm">' + esc(name) + '</td>' + (showDisc ? '<td class="n">' + money2(r.rt) + per + '</td><td class="n">' + (r.rt - r.q > 0.5 ? money2(r.rt - r.q) + per : '&mdash;') + '</td><td class="n">' + money2(r.q) + per + tag + '</td>' : '<td class="n">' + money2(r.q) + per + tag + '</td>') + '</tr>' +
