@@ -134,8 +134,10 @@ window.DSCalc = (function () {
     ];
   }
   function entTotal() { return entRows().reduce(function (t, r) { return t + (Number(r.rate) || 0) * (Number(r.qty) || 0); }, Number(P.ent.base) || 0); }
-  function visibleLines() { var lvl = scopeLevel(); return LINES.filter(function (l) { return !l.rom || lvl === 'custom'; }); }
+  function visibleLines() { return LINES; }
+  function lineOn(o, l) { var st = o.lines[l.key] || {}; return l.rom ? (st.romOn == null ? scopeLevel() === 'custom' : !!st.romOn) : !!st.on; }
   function lineRetail(o, key) {
+    var ov = o.lines[key] && o.lines[key].retail; if (ov != null && ov !== '') return Number(ov) || 0;
     if (P.tab === 'enterprise' && key === 'Inbound') return entTotal();
     if (key === 'Custom development') return romExpected();
     return retail(key, P.fte, o.prot);
@@ -144,7 +146,7 @@ window.DSCalc = (function () {
   function totals(o) {
     var annual = 0, oneTime = 0, retailAnnual = 0, rows = [], custom = scopeLevel() === 'custom';
     visibleLines().forEach(function (l) {
-      var st = o.lines[l.key]; var on = l.rom ? custom : st.on; if (!on) return;
+      var st = o.lines[l.key]; if (!lineOn(o, l)) return;
       var rt = lineRetail(o, l.key), price = st.price == null ? Math.round(rt) : st.price, q = price * (1 - (st.conc || 0) / 100);
       if (l.oneTime) oneTime += q; else { annual += q; retailAnnual += rt; }
       rows.push({ key: l.key, label: lineLabel(o, l), rt: rt, q: q, conc: st.conc, reason: st.reason, oneTime: !!l.oneTime });
@@ -174,6 +176,7 @@ window.DSCalc = (function () {
   }
 
   /* ---------- render ---------- */
+  var rendering = false;
   function render() {
     if (!mounted || !P) return;
     var box = $('pricing'); if (!box || box.hidden) return;
@@ -232,17 +235,17 @@ window.DSCalc = (function () {
     }
     h += '<div class="sub-h">Products</div><p class="hint" style="margin:0 0 6px">Insight includes Inbound. Custom is a blank line you name (for example an AACRAO member credit).</p><div class="prods">' +
       visibleLines().map(function (l) {
-        var st = o.lines[l.key], on = l.rom ? lvl === 'custom' : st.on;
+        var st = o.lines[l.key], on = lineOn(o, l);
         if (l.custom) return '<label class="prod-c"><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '><input class="t" type="text" data-customname="1" placeholder="Custom line name" value="' + esc(o.customName) + '"></label>';
-        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + (l.rom ? ' disabled' : '') + '> ' + esc(lineLabel(o, l)) + (l.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</label>';
+        return '<label><input type="checkbox" data-line="' + l.key + '"' + (on ? ' checked' : '') + '> ' + esc(lineLabel(o, l)) + (l.oneTime ? ' <span class="chip-s">one-time</span>' : '') + '</label>';
       }).join('') + '</div></div></section>';
 
     // tier table
-    h += '<section class="card"><div class="card-h">Per product price at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE') + '</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Tier is the workbook step function (rate per FTE, with minimums). Curve is the smooth regression used as the protected floor. Installation comes from the proposal bands.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
-      '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Tier</th><th class="r">Curve</th><th class="r">Retail annual</th></tr></thead><tbody>' +
+    h += '<section class="card"><div class="card-h">Per product price at ' + (P.fte ? fmt(P.fte) + ' FTE' : 'this FTE') + '</div><div class="card-b"><p class="hint" style="margin:0 0 8px">Tier is the workbook step function (rate per FTE, with minimums). Curve is the smooth regression used as the protected floor. Installation comes from the proposal bands. Every retail price here is editable; clear a box to go back to the calculated price.' + (P.fte ? ' This FTE is tier ' + tierFor(P.fte).id + '.' : '') + '</p>' +
+      '<div class="tbl"><table class="pt"><thead><tr><th>Line</th><th class="r">Tier</th><th class="r">Curve</th><th class="r">Retail</th></tr></thead><tbody>' +
       visibleLines().map(function (l) {
-        var on = l.rom ? lvl === 'custom' : o.lines[l.key].on, tp = tierPrice(l.key, P.fte), cp = curvePrice(l.key, P.fte);
-        return '<tr class="' + (on ? '' : 'off') + '"><td>' + esc(lineLabel(o, l)) + '</td><td class="r">' + (tp === null || !P.fte ? '-' : money(tp)) + '</td><td class="r">' + (cp === null || !P.fte ? '-' : money(cp)) + '</td><td class="r">' + (P.fte || l.rom ? money(lineRetail(o, l.key)) : '-') + '</td></tr>';
+        var on = lineOn(o, l), tp = tierPrice(l.key, P.fte), cp = curvePrice(l.key, P.fte), ov = o.lines[l.key].retail;
+        return '<tr class="' + (on ? '' : 'off') + '"><td>' + esc(lineLabel(o, l)) + '</td><td class="r">' + (tp === null || !P.fte ? '-' : money(tp)) + '</td><td class="r">' + (cp === null || !P.fte ? '-' : money(cp)) + '</td><td class="r"><input class="t num' + (ov != null ? ' edited' : '') + '" type="number" step="100" data-retail="' + l.key + '" value="' + Math.round(lineRetail(o, l.key)) + '" aria-label="Retail for ' + esc(lineLabel(o, l)) + '"' + (ov != null ? ' title="Edited. Clear the box to go back to the calculated price."' : '') + '></td></tr>';
       }).join('') + '</tbody></table></div></div></section></div>';
 
     // negotiation table
@@ -268,7 +271,8 @@ window.DSCalc = (function () {
         (P.eff.mode === 'custom' ? '<input class="t" type="date" data-eff="date" value="' + esc(P.eff.date) + '">' : '') + (P.eff.mode === 'other' ? '<input class="t" type="text" data-eff="other" placeholder="e.g. the first day of the Spring 2027 term" value="' + esc(P.eff.other) + '">' : '') + '</label>' : '') +
       '</div></div><p class="hint" style="margin:10px 0 0">These terms are stored with the pricing for the proposal. Standard tab reproduces PRICING MATRIX.xlsx (beta v0.3); Enterprise is Woody\'s model v2 with placeholder rates.</p></div></section>';
     h += '</main></div>';
-    box.innerHTML = h;
+    // Replacing the DOM blurs a focused input, which fires its change event and asks for another render mid-swap.
+    if (rendering) return; rendering = true; try { box.innerHTML = h; } finally { rendering = false; }
   }
 
   /* ---------- events ---------- */
@@ -294,7 +298,8 @@ window.DSCalc = (function () {
     if (t.id === 'p-primary') { P.primary = P.cur; touch(); return; }
     if (t.matches('[data-ent]')) { var k = t.getAttribute('data-ent'); if (k === 'sis' || k === 'crm' || k === 'audit') { P.ent[k] = t.value; delete P.ent.rate[k]; } else P.ent[k] = k === 'base' ? num(t.value) : Math.max(1, num(t.value)); touch(); return; }
     if (t.matches('[data-rate]')) { P.ent.rate[t.getAttribute('data-rate')] = num(t.value); touch(); return; }
-    if (t.matches('[data-line]')) { o.lines[t.getAttribute('data-line')].on = t.checked; touch(); return; }
+    if (t.matches('[data-line]')) { var lk = t.getAttribute('data-line'), ll = LINES.filter(function (x) { return x.key === lk; })[0]; if (ll && ll.rom) o.lines[lk].romOn = t.checked; else o.lines[lk].on = t.checked; touch(); return; }
+    if (t.matches('[data-retail]')) { var rk = t.getAttribute('data-retail'), rs = o.lines[rk]; rs.retail = String(t.value).trim() === '' ? null : num(t.value); rs.price = null; touch(); return; }
     if (t.matches('[data-price]')) { o.lines[t.getAttribute('data-price')].price = num(t.value); touch(); return; }
     if (t.matches('[data-reason], [data-customname]')) { render(); return; }
     if (t.matches('[data-flag]')) { P.flags[t.getAttribute('data-flag')] = t.checked; touch(true); return; }

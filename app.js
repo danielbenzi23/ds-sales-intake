@@ -18,6 +18,9 @@
   SPEC.sections.forEach(function (sec) { sec.items.forEach(function (it) { if (it.quote) QUOTE_IDS.push(it.id); it.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = it.id; }); }); });
   SPEC.kickoff.fields.forEach(function (f) { FIELDS[f.key] = f; ITEM_OF[f.key] = 'kickoff'; });
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { } } };
+  // Keep the step bar pinned under the header: measure both so sticky side panels sit below them.
+  function measureBars() { var top = document.querySelector('.top'), nav = document.querySelector('.views'); if (!top || !nav) return; var th = getComputedStyle(top).position === 'sticky' ? top.offsetHeight : 0, nh = nav.offsetHeight; document.documentElement.style.setProperty('--top-h', th + 'px'); document.documentElement.style.setProperty('--stick', (th + nh) + 'px'); }
+  measureBars(); window.addEventListener('resize', measureBars); if (window.ResizeObserver) new ResizeObserver(measureBars).observe(document.querySelector('.top'));
   var ME = null; try { ME = JSON.parse(store.get('ds-intake-user') || 'null'); } catch (e) { ME = null; }
   $('who').value = (ME && ME.name) || store.get('ds-intake-who') || '';
   if (ME && !isDemo) { var back = document.createElement('a'); back.href = '/'; back.className = 'back-link'; back.textContent = ME.role === 'admin' ? '← All deals' : '← My deals'; var logo = document.querySelector('.top .logo'); logo.parentNode.insertBefore(back, logo); }
