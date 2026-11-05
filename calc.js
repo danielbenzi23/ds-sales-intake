@@ -254,6 +254,7 @@ window.DSCalc = (function () {
       '<label>Contract term<select class="t" data-o="term">' + [1, 2, 3, 4, 5].map(function (y) { return '<option value="' + y * 12 + '"' + (o.term === y * 12 ? ' selected' : '') + '>' + y + ' year' + (y > 1 ? 's' : '') + '</option>'; }).join('') + '</select></label></div>' +
       '<div class="row2"><label>Protected pricing<select class="t" data-o="prot"><option value="1"' + (o.prot ? ' selected' : '') + '>Yes: protected rate (lower, e.g. faith-based)</option><option value="0"' + (!o.prot ? ' selected' : '') + '>No: standard rate (higher)</option></select></label><label>Option name<input class="t" type="text" data-o="name" value="' + esc(o.name) + '"></label></div>' +
       '<label class="prim"><input type="checkbox" id="p-primary"' + (P.primary === P.cur ? ' checked' : '') + '> Primary option (syncs to HubSpot)</label>' +
+      (P.primary !== P.cur ? '<div class="not-primary"><span class="warn-tag">&#9888; not synced</span> HubSpot gets <b>' + esc(P.opts[P.primary].name) + '</b>, not this option. <button type="button" class="btn sm" id="p-make-primary">Make this the primary</button></div>' : '') +
       (o.term > 12 ? '<div class="mybadge">Multi-year pricing: ' + (o.term / 12) + ' year term, price locked</div>' : '');
     if (P.tab === 'enterprise') {
       h += '<div class="sub-h">Tech stack' + (P.ent.stackFromIntake ? ' <span class="src-tag">intake items 5 and 6</span>' : '') + '</div>' +
@@ -348,6 +349,7 @@ window.DSCalc = (function () {
   }
   function onClick(e) {
     var t = e.target;
+    if (t.id === 'p-make-primary') { P.primary = P.cur; touch(); return; }
     var del = t.closest('[data-delopt]');
     if (del) { var i = num(del.getAttribute('data-delopt')); P.opts.splice(i, 1); if (P.primary === i) P.primary = 0; else if (P.primary > i) P.primary--; if (P.cur >= P.opts.length) P.cur = P.opts.length - 1; touch(); return; }
     var ot = t.closest('[data-opt]'); if (ot) { P.cur = num(ot.getAttribute('data-opt')); render(); return; }
