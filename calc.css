@@ -133,3 +133,7 @@ details.card.fold > summary .fold-sum { margin-left: 0; }
 .not-primary { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--amber-soft); color: var(--body); }
 .opt-tab .star.off { color: var(--muted); cursor: pointer; }
 .opt-tab .star.off:hover { color: #F59E0B; }
+.yr-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.yr-chip { border: 1px solid var(--line2); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: var(--fg); background: var(--soft); }
+table.yrs td.r input.num { max-width: 110px; }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--blue); font: inherit; cursor: pointer; text-decoration: underline; }

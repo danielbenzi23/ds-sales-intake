@@ -99,3 +99,6 @@
 }
 @media (max-width: 640px) { .doc .cover { padding: 28px 20px 0; } .doc .cover .wavec { margin: 0 -20px; } .doc .cover .headline { font-size: 30px; margin-top: 36px; } .doc .cover-foot, .doc .body { padding-left: 20px; padding-right: 20px; } .doc table.prod { font-size: 11px; } }
 table.prod tr.grp td { padding: 14px 0 4px; font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #64748B; border-bottom: 1px solid #E2E8F0; }
+table.prod.yrsched { margin-top: 12px; }
+table.prod.yrsched td, table.prod.yrsched th { padding: 6px 0; }
+table.prod.yrsched .r { text-align: right; }

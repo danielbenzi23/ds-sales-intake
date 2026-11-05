@@ -152,6 +152,7 @@ window.DSCalc = (function () {
   function visibleLines() { return LINES; }
   var GROUPS = [[false, 'Products', 'annual licenses'], [true, 'Implementation and development', 'one-time']];
   function groupHead(g, cols) { return '<tr class="grp"><td colspan="' + cols + '">' + g[1] + ' <span>' + g[2] + '</span></td></tr>'; }
+  function renameYears(o) { var n = Math.round((o.term || 12) / 12); if (/,\s*\d+\s*years?\s*$/i.test(o.name || '')) o.name = o.name.replace(/,\s*\d+\s*years?\s*$/i, ', ' + n + ' year' + (n > 1 ? 's' : '')); }
   function pct(c) { return Math.round((Number(c) || 0) * 100) / 100; }
   function linePrice(o, key) { var st = o.lines[key]; return st.price == null ? Math.round(lineRetail(o, key)) : st.price; }
   // Reverse math: hit a target total by working out the concession; a target above the price raises the price instead.
@@ -180,7 +181,19 @@ window.DSCalc = (function () {
       rows.push({ key: l.key, label: lineLabel(o, l), rt: rt, q: q, conc: pct(st.conc), reason: st.reason, oneTime: !!l.oneTime });
     });
     var years = o.term / 12;
-    return { annual: annual, oneTime: oneTime, retailAnnual: retailAnnual, rows: rows, years: years, tcv: annual * years + oneTime };
+    // Tiers for years: Year 1 is the table above; each later year repeats the year before unless the rep changed it.
+    var ny = Math.max(1, Math.round(years)), byYear = [], perLine = {}, varies = false;
+    rows.forEach(function (r) { if (!r.oneTime) perLine[r.key] = [r.q]; });
+    for (var y = 2; y <= ny; y++) rows.forEach(function (r) {
+      if (r.oneTime) return;
+      var ov = o.yearAmt && o.yearAmt[y] && o.yearAmt[y][r.key], prev = perLine[r.key][y - 2];
+      var v = ov != null && ov !== '' ? Math.max(0, Number(ov) || 0) : prev;
+      if (Math.abs(v - r.q) > 0.5) varies = true;
+      perLine[r.key].push(v);
+    });
+    for (var yy = 0; yy < ny; yy++) byYear.push(rows.reduce(function (a, r) { return a + (r.oneTime ? 0 : perLine[r.key][yy]); }, 0));
+    var tcv = varies ? byYear.reduce(function (a, b) { return a + b; }, 0) + oneTime : annual * years + oneTime;
+    return { annual: annual, oneTime: oneTime, retailAnnual: retailAnnual, rows: rows, years: years, tcv: tcv, byYear: byYear, perLine: perLine, varies: varies };
   }
 
   /* ---------- gate: what we need before a number goes out ---------- */
@@ -296,10 +309,32 @@ window.DSCalc = (function () {
           : '<tr class="total"><td colspan="5">Annual total <span class="hint">type a target to spread the same concession across the products</span></td><td class="r"><input class="t num tot" type="number" min="0" step="100" data-grouptotal="annual" value="' + Math.round(t.annual) + '" aria-label="Annual total"></td></tr>');
       }).join('') : '<tr><td colspan="6" class="muted">Select at least one product.</td></tr>') +
       '</tbody></table></div>' +
-      '<div class="kpis"><div class="kpi"><div class="l">Annual</div><div class="v">' + money(t.annual) + '</div><div class="s">Billed annually for ' + t.years + ' year' + (t.years > 1 ? 's' : '') + '</div></div>' +
+      '<div class="kpis"><div class="kpi"><div class="l">Annual</div><div class="v">' + money(t.annual) + '</div><div class="s">' + (t.varies ? 'Year 1; later years change (see Pricing by year)' : 'Billed annually for ' + t.years + ' year' + (t.years > 1 ? 's' : '')) + '</div></div>' +
       '<div class="kpi"><div class="l">One-time</div><div class="v">' + money(t.oneTime) + '</div><div class="s">Implementation and development</div></div>' +
       '<div class="kpi"><div class="l">Year one</div><div class="v">' + money(t.annual + t.oneTime) + '</div><div class="s">Products plus implementation</div></div>' +
       '<div class="kpi"><div class="l">Total over term</div><div class="v">' + money(t.tcv) + '</div><div class="s">' + (P.flags.tcv ? 'Printed on the proposal' : 'Internal only') + '</div></div></div></div></section>';
+
+    // pricing by year (tiers for years)
+    var ny = t.byYear.length, ann = t.rows.filter(function (r) { return !r.oneTime; });
+    var yb = '<p class="hint" style="margin:0 0 8px">Choose how many years this option covers, then set a different price for any year: per line, as a year total, or as a % change vs year 1 (for example -10 for a discount, 5 for an increase). A year you leave alone repeats the year before. Year 1 comes from the table above.</p>' +
+      '<div class="yr-bar">' + t.byYear.map(function (v, i) { return '<span class="yr-chip">Year ' + (i + 1) + '</span>'; }).join('') +
+      (ny < 5 ? '<button type="button" class="opt-add" id="p-addyear">+ Add year</button>' : '') + (ny > 1 ? '<button type="button" class="opt-add" id="p-delyear">Remove year ' + ny + '</button>' : '') + '</div>';
+    if (!ann.length) yb += '<p class="muted" style="margin:8px 0 0">Select at least one product.</p>';
+    else {
+      yb += '<div class="tbl"><table class="pt yrs"><thead><tr><th>Product</th>' + t.byYear.map(function (v, i) { return '<th class="r">Year ' + (i + 1) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        ann.map(function (r) {
+          return '<tr><td>' + esc(r.label) + '</td>' + t.perLine[r.key].map(function (v, i) {
+            if (!i) return '<td class="r"><b>' + money(v) + '</b></td>';
+            var own = o.yearAmt && o.yearAmt[i + 1] && o.yearAmt[i + 1][r.key] != null;
+            return '<td class="r"><input class="t num' + (own ? ' edited' : '') + '" type="number" min="0" step="100" data-yamt="' + (i + 1) + '|' + r.key + '" value="' + Math.round(v) + '" title="' + (own ? 'Changed for this year. Clear it to repeat the year before.' : 'Same as the year before') + '" aria-label="Year ' + (i + 1) + ' ' + esc(r.label) + '"></td>';
+          }).join('') + '</tr>';
+        }).join('') +
+        '<tr class="total"><td>Year total</td>' + t.byYear.map(function (v, i) { return i ? '<td class="r"><input class="t num tot" type="number" min="0" step="100" data-ytot="' + (i + 1) + '" value="' + Math.round(v) + '" aria-label="Year ' + (i + 1) + ' total"></td>' : '<td class="r"><b>' + money(v) + '</b></td>'; }).join('') + '</tr>' +
+        '<tr><td class="muted">Change vs year 1 (%)</td>' + t.byYear.map(function (v, i) { if (!i) return '<td></td>'; var d = t.byYear[0] ? Math.round((v / t.byYear[0] - 1) * 1000) / 10 : 0; return '<td class="r"><input class="t num" type="number" step="any" data-ypct="' + (i + 1) + '" value="' + d + '" aria-label="Year ' + (i + 1) + ' change vs year 1"></td>'; }).join('') + '</tr>' +
+        '</tbody></table></div>' +
+        '<p class="hint" style="margin:8px 0 0">One-time lines are billed in year 1 only. Total over ' + ny + ' year' + (ny > 1 ? 's' : '') + ': <b>' + money(t.tcv) + '</b>' + (t.varies ? ' (prices change by year)' : '') + '. <button type="button" class="linkbtn" id="p-yreset"' + (o.yearAmt && Object.keys(o.yearAmt).length ? '' : ' hidden') + '>Make every year the same as year 1</button></p>';
+    }
+    h += '<section class="card"><div class="card-h" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">Pricing by year<span class="fold-sum" style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500">' + ny + ' year' + (ny > 1 ? 's' : '') + (t.varies ? ' · <span class="warn-tag">prices change by year</span>' : ' · same price every year') + '</span></div><div class="card-b">' + yb + '</div></section>';
 
     // proposal terms
     var termsOn = [['lock', 'Price lock'], ['roi', 'ROI out'], ['msa', 'MSA'], ['itemize', 'One-time lines itemized']].filter(function (f) { return P.flags[f[0]]; }).map(function (f) { return f[1]; });
@@ -333,7 +368,7 @@ window.DSCalc = (function () {
     if (t.matches('[data-grouptotal]')) { if (String(t.value).trim() !== '') setGroupTotal(o, t.getAttribute('data-grouptotal') === 'onetime', num(t.value)); touch(); return; }
     if (t.matches('[data-rom]')) { P.rom[t.getAttribute('data-rom')] = num(t.value); touch(); return; }
     if (t.id === 'p-se') { P.seReviewed = t.checked; touch(); return; }
-    if (t.matches('[data-o="term"]')) { o.term = num(t.value); touch(); return; }
+    if (t.matches('[data-o="term"]')) { o.term = num(t.value); renameYears(o); touch(); return; }
     if (t.matches('[data-o="prot"]')) { o.prot = t.value === '1'; touch(); return; }
     if (t.matches('[data-o="name"]')) { render(); return; }
     if (t.id === 'p-primary') { P.primary = P.cur; touch(); return; }
@@ -342,6 +377,15 @@ window.DSCalc = (function () {
     if (t.matches('[data-rate]')) { P.ent.rate[t.getAttribute('data-rate')] = num(t.value); touch(); return; }
     if (t.matches('[data-line]')) { var lk = t.getAttribute('data-line'), ll = LINES.filter(function (x) { return x.key === lk; })[0]; if (ll && ll.rom) o.lines[lk].romOn = t.checked; else o.lines[lk].on = t.checked; touch(); return; }
     if (t.matches('[data-retail]')) { var rk = t.getAttribute('data-retail'), rs = o.lines[rk]; rs.retail = String(t.value).trim() === '' ? null : num(t.value); rs.price = null; touch(); return; }
+    if (t.matches('[data-yamt]')) { var yp = t.getAttribute('data-yamt').split('|'); o.yearAmt = o.yearAmt || {}; o.yearAmt[yp[0]] = o.yearAmt[yp[0]] || {}; if (String(t.value).trim() === '') delete o.yearAmt[yp[0]][yp[1]]; else o.yearAmt[yp[0]][yp[1]] = Math.max(0, num(t.value)); touch(); return; }
+    if (t.matches('[data-ytot], [data-ypct]')) {
+      var isTot = t.matches('[data-ytot]'), yr = num(t.getAttribute(isTot ? 'data-ytot' : 'data-ypct')), tt = totals(o), cur = tt.byYear[yr - 1] || 0, base = tt.byYear[0] || 0;
+      if (String(t.value).trim() === '' || !base) { touch(); return; }
+      var target = isTot ? Math.max(0, num(t.value)) : base * (1 + num(t.value) / 100);
+      o.yearAmt = o.yearAmt || {}; o.yearAmt[yr] = {};
+      tt.rows.forEach(function (r) { if (r.oneTime) return; var share = isTot && cur ? tt.perLine[r.key][yr - 1] / cur : tt.perLine[r.key][0] / base; o.yearAmt[yr][r.key] = Math.round(target * share * 100) / 100; });
+      touch(); return;
+    }
     if (t.matches('[data-price]')) { o.lines[t.getAttribute('data-price')].price = num(t.value); touch(); return; }
     if (t.matches('[data-reason], [data-customname]')) { render(); return; }
     if (t.matches('[data-flag]')) { P.flags[t.getAttribute('data-flag')] = t.checked; touch(true); return; }
@@ -350,6 +394,9 @@ window.DSCalc = (function () {
   function onClick(e) {
     var t = e.target;
     if (t.id === 'p-make-primary') { P.primary = P.cur; touch(); return; }
+    if (t.id === 'p-addyear') { var oo = P.opts[P.cur]; oo.term = Math.min(60, (oo.term || 12) + 12); renameYears(oo); touch(); return; }
+    if (t.id === 'p-delyear') { var od = P.opts[P.cur], last = Math.round((od.term || 12) / 12); od.term = Math.max(12, (od.term || 12) - 12); if (od.yearAmt) delete od.yearAmt[last]; renameYears(od); touch(); return; }
+    if (t.id === 'p-yreset') { P.opts[P.cur].yearAmt = {}; touch(); return; }
     var mk = t.closest('[data-mkprim]');
     if (mk) { P.primary = num(mk.getAttribute('data-mkprim')); P.cur = P.primary; touch(); return; }
     var del = t.closest('[data-delopt]');
@@ -372,17 +419,32 @@ window.DSCalc = (function () {
   function summary() {
     if (!P) return null;
     var p = P.opts[P.primary], t = totals(p);
-    var optLine = function (o, i) { var x = totals(o); return (i === P.primary ? '* ' : '') + o.name + ': ' + x.rows.map(function (r) { return r.label + ' ' + money(r.q) + (r.oneTime ? ' one-time' : '/yr') + (r.conc ? ' (' + r.conc + '% off' + (r.reason ? ', ' + r.reason : '') + ')' : ''); }).join('; ') + '. Annual ' + money(x.annual) + ', one-time ' + money(x.oneTime) + ', ' + x.years + '-year total ' + money(x.tcv) + '.'; };
+    var optLine = function (o, i) { var x = totals(o); return (i === P.primary ? '* ' : '') + o.name + ': ' + x.rows.map(function (r) { return r.label + ' ' + money(r.q) + (r.oneTime ? ' one-time' : '/yr') + (r.conc ? ' (' + r.conc + '% off' + (r.reason ? ', ' + r.reason : '') + ')' : ''); }).join('; ') + '. Annual ' + money(x.annual) + (x.varies ? ' (by year: ' + x.byYear.map(function (v, k) { return 'Y' + (k + 1) + ' ' + money(v); }).join(', ') + ')' : '') + ', one-time ' + money(x.oneTime) + ', ' + x.years + '-year total ' + money(x.tcv) + '.'; };
     return {
       status: P.status, approvedBy: P.approvedBy, approvedAt: P.approvedAt,
       primary: p.name, termYears: t.years, annual: Math.round(t.annual), oneTime: Math.round(t.oneTime), tcv: Math.round(t.tcv),
       products: t.rows.map(function (r) { return r.label; }).join('; '), model: P.tab === 'enterprise' ? 'Enterprise' : 'Standard', scope: scopeLevel(), fte: P.fte, protectedPricing: !!p.prot,
       options: P.opts.map(optLine).join('\n'), note: P.note,
       // Line items for the HubSpot deal (primary option): list price before the concession, the % off, and the billing.
-      termMonths: p.term, lines: t.rows.map(function (r) {
-        var l = LINES.filter(function (x) { return x.key === r.key; })[0] || {};
-        return { key: r.key, name: l.custom ? (p.customName || 'Custom line') : (l.label || r.label), price: Math.round(linePrice(p, r.key)), discount: r.conc || 0, amount: Math.round(r.q), oneTime: !!r.oneTime, reason: r.reason || '' };
-      })
+      termMonths: p.term, byYear: t.byYear.map(Math.round), yearsVary: t.varies, lines: (function () {
+        var out = [];
+        t.rows.forEach(function (r) {
+          var l = LINES.filter(function (x) { return x.key === r.key; })[0] || {};
+          var base = { key: r.key, name: l.custom ? (p.customName || 'Custom line') : (l.label || r.label), price: Math.round(linePrice(p, r.key)), discount: r.conc || 0, amount: Math.round(r.q), oneTime: !!r.oneTime, reason: r.reason || '' };
+          var py = t.perLine[r.key];
+          if (r.oneTime || !t.varies || !py) { out.push(base); return; }
+          // Years with the same price become one line item: Year 1 keeps the list price and % off, later spans carry the agreed amount.
+          var i = 0;
+          while (i < py.length) {
+            var j = i; while (j + 1 < py.length && Math.abs(py[j + 1] - py[i]) < 0.5) j++;
+            var span = (i === j ? 'Year ' + (i + 1) : 'Years ' + (i + 1) + '-' + (j + 1));
+            if (i === 0) out.push(Object.assign({}, base, { name: base.name + ' (' + span + ')', termMonths: (j + 1) * 12, startDelayMonths: 0, amount: Math.round(py[0]) }));
+            else out.push({ key: r.key + '-Y' + (i + 1), name: base.name + ' (' + span + ')', price: Math.round(py[i]), discount: 0, amount: Math.round(py[i]), oneTime: false, reason: '', termMonths: (j - i + 1) * 12, startDelayMonths: i * 12 });
+            i = j + 1;
+          }
+        });
+        return out;
+      })()
     };
   }
   function recapLines() {
@@ -406,7 +468,7 @@ window.DSCalc = (function () {
       if (!P) return null;
       var opts = P.opts.map(function (o, i) {
         var t = totals(o);
-        return { name: o.name, term: o.term, years: t.years, prot: !!o.prot, primary: i === P.primary, customName: o.customName, annual: t.annual, oneTime: t.oneTime, tcv: t.tcv, retailAnnual: t.retailAnnual, rows: t.rows };
+        return { name: o.name, term: o.term, years: t.years, prot: !!o.prot, primary: i === P.primary, customName: o.customName, annual: t.annual, oneTime: t.oneTime, tcv: t.tcv, retailAnnual: t.retailAnnual, rows: t.rows, byYear: t.byYear, varies: t.varies };
       });
       var eff = P.eff || {}, effText = 'date of execution';
       if (eff.mode === 'custom' && eff.date) effText = new Date(eff.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
