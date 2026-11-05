@@ -124,3 +124,9 @@ details.card.fold > summary .fold-sum { margin-left: auto; display: inline-flex;
 details.card.fold:not([open]) > summary { border-bottom: 0; }
 details.card.fold > summary:hover .fold-t { color: var(--blue); }
 .right details.card.fold, .left details.card.fold { margin: 0; }
+/* Drawer headers: centred text, same height everywhere */
+details.card.fold > summary.card-h { padding: 12px 14px; min-height: 44px; line-height: 1.3; border-bottom: 0; }
+details.card.fold[open] > summary.card-h { padding-bottom: 4px; }
+details.card.fold > summary .fold-t { flex: 1 1 auto; min-width: 0; }
+details.card.fold > summary .fold-sum { margin-left: 0; }
+.left details.card.fold > summary .fold-sum, aside details.card.fold > summary .fold-sum { flex-basis: 100%; padding-left: 17px; }
