@@ -204,7 +204,7 @@
     var answeredN = SPEC.sections.reduce(function (n, s) { return n + s.items.filter(itemAnswered).length; }, 0);
     api('save', { answers: answersPayload(), savedBy: who, quoteReady: a.quoteReady, specialistNeeded: a.specialistNeeded, quoteMissing: a.quoteMissing, flags: a.flags, itemsAnswered: answeredN, recap: recapText(), pricing: DSCalc.summary(), proposal: DSProposal.summary() })
       .then(function (r) {
-        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); var ps = DSCalc.summary(); toast(r.hubspot === 'ok' ? 'Saved and sent to HubSpot (note, deal card' + (r.company_updated ? ', company card' : '') + ')' + (ps && ps.primary ? '. Pricing synced: ' + ps.primary + ' (' + ps.status + ')' : '') + '.' : 'Saved here, but HubSpot did not accept the update. Daniel has been notified.'); }
+        if (r.ok) { S.dirty = false; S.savedAt = r.saved_at || new Date().toISOString(); S.savedBy = who; store.set('ds-intake-draft-' + DEAL, ''); var ps = DSCalc.summary(); toast(r.hubspot === 'ok' ? 'Saved and sent to HubSpot (note, deal card' + (r.company_updated ? ', company card' : '') + (r.line_items ? ', ' + r.line_items + ' line item' + (r.line_items > 1 ? 's' : '') : '') + ')' + (ps && ps.primary ? '. Pricing synced: ' + ps.primary + ' (' + ps.status + ')' : '') + '.' : 'Saved here, but HubSpot did not accept the update. Daniel has been notified.'); }
         else toast(r.error || 'Save failed.');
       }).catch(function () { toast('Save failed: network error.'); })
       .then(function () { $('b-save').disabled = false; $('b-save').textContent = 'Save'; setSaveState(); });

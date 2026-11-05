@@ -131,3 +131,5 @@ details.card.fold > summary .fold-t { flex: 1 1 auto; min-width: 0; }
 details.card.fold > summary .fold-sum { margin-left: 0; }
 .left details.card.fold > summary .fold-sum, aside details.card.fold > summary .fold-sum { flex-basis: 100%; padding-left: 17px; }
 .not-primary { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--amber-soft); color: var(--body); }
+.opt-tab .star.off { color: var(--muted); cursor: pointer; }
+.opt-tab .star.off:hover { color: #F59E0B; }

@@ -244,7 +244,7 @@ window.DSCalc = (function () {
 
     // model + options
     h += '<div class="calc-bar"><div class="seg" role="tablist"><button type="button" data-ptab="standard" class="' + (P.tab === 'standard' ? 'on' : '') + '">Standard</button><button type="button" data-ptab="enterprise" class="' + (P.tab === 'enterprise' ? 'on' : '') + '">Enterprise</button></div>' +
-      '<div class="opt-tabs">' + P.opts.map(function (x, i) { return '<button type="button" class="opt-tab' + (i === P.cur ? ' on' : '') + '" data-opt="' + i + '">' + (i === P.primary ? '<span class="star" title="Primary: syncs to HubSpot">&#9733;</span>' : '') + esc(x.name) + (P.opts.length > 1 ? ' <span class="x" data-delopt="' + i + '" title="Remove option">&times;</span>' : '') + '</button>'; }).join('') +
+      '<div class="opt-tabs">' + P.opts.map(function (x, i) { return '<button type="button" class="opt-tab' + (i === P.cur ? ' on' : '') + '" data-opt="' + i + '">' + (i === P.primary ? '<span class="star" title="Primary: syncs to HubSpot">&#9733;</span>' : '<span class="star off" data-mkprim="' + i + '" title="Make this the primary option (syncs to HubSpot)" role="button" aria-label="Make primary">&#9734;</span>') + esc(x.name) + (P.opts.length > 1 ? ' <span class="x" data-delopt="' + i + '" title="Remove option">&times;</span>' : '') + '</button>'; }).join('') +
       '<button type="button" class="opt-add" id="p-addopt">+ Add option</button></div></div>';
 
     // inputs
@@ -350,6 +350,8 @@ window.DSCalc = (function () {
   function onClick(e) {
     var t = e.target;
     if (t.id === 'p-make-primary') { P.primary = P.cur; touch(); return; }
+    var mk = t.closest('[data-mkprim]');
+    if (mk) { P.primary = num(mk.getAttribute('data-mkprim')); P.cur = P.primary; touch(); return; }
     var del = t.closest('[data-delopt]');
     if (del) { var i = num(del.getAttribute('data-delopt')); P.opts.splice(i, 1); if (P.primary === i) P.primary = 0; else if (P.primary > i) P.primary--; if (P.cur >= P.opts.length) P.cur = P.opts.length - 1; touch(); return; }
     var ot = t.closest('[data-opt]'); if (ot) { P.cur = num(ot.getAttribute('data-opt')); render(); return; }
@@ -375,7 +377,12 @@ window.DSCalc = (function () {
       status: P.status, approvedBy: P.approvedBy, approvedAt: P.approvedAt,
       primary: p.name, termYears: t.years, annual: Math.round(t.annual), oneTime: Math.round(t.oneTime), tcv: Math.round(t.tcv),
       products: t.rows.map(function (r) { return r.label; }).join('; '), model: P.tab === 'enterprise' ? 'Enterprise' : 'Standard', scope: scopeLevel(), fte: P.fte, protectedPricing: !!p.prot,
-      options: P.opts.map(optLine).join('\n'), note: P.note
+      options: P.opts.map(optLine).join('\n'), note: P.note,
+      // Line items for the HubSpot deal (primary option): list price before the concession, the % off, and the billing.
+      termMonths: p.term, lines: t.rows.map(function (r) {
+        var l = LINES.filter(function (x) { return x.key === r.key; })[0] || {};
+        return { key: r.key, name: l.custom ? (p.customName || 'Custom line') : (l.label || r.label), price: Math.round(linePrice(p, r.key)), discount: r.conc || 0, amount: Math.round(r.q), oneTime: !!r.oneTime, reason: r.reason || '' };
+      })
     };
   }
   function recapLines() {
