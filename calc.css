@@ -121,3 +121,6 @@ details.card.fold > summary .fold-sum { margin-left: auto; display: inline-flex;
 .scope-q.sug { border-style: dashed; border-color: var(--amber); }
 .ent-row.off span, .ent-row.off b { opacity: .5; }
 .ent-on { display: flex !important; gap: 6px; align-items: center; font-size: 12.5px !important; font-weight: 500 !important; color: var(--body) !important; }
+details.card.fold:not([open]) > summary { border-bottom: 0; }
+details.card.fold > summary:hover .fold-t { color: var(--blue); }
+.right details.card.fold, .left details.card.fold { margin: 0; }
