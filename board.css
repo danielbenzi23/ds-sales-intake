@@ -1,0 +1,64 @@
+/* Feedback board. Tokens from app.css; chart series use a validated categorical palette (light/dark). */
+:root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #6250d6; --s7: #008300; --s8: #e34948; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9; --s7: #008300; --s8: #e66767; } }
+:root[data-theme="dark"] { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9; --s7: #008300; --s8: #e66767; }
+
+.bd { max-width: 1440px; margin: 0 auto; padding: 20px; }
+.bd .loading { padding: 60px 0; text-align: center; color: var(--muted); }
+.bd .range { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.bd .range .lbl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+
+.bd .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.bd .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.bd .kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--muted); }
+.bd .kpi .v { font: 800 30px/1.15 var(--font-display); color: var(--fg); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.bd .kpi .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.bd .kpi .d.up { color: var(--amber); } .bd .kpi .d.good { color: var(--green); }
+
+.bd .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.bd .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+.bd .card h3 { margin: 0 0 2px; font: 700 14px var(--font-display); color: var(--fg); }
+.bd .card .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.bd .bars { display: grid; gap: 7px; }
+.bd .bar { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 8px; align-items: center; font-size: 12.5px; cursor: default; }
+.bd .bar .n { color: var(--body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd .bar .t { height: 14px; background: var(--soft); border-radius: 0 4px 4px 0; position: relative; }
+.bd .bar .t i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px; }
+.bd .bar .v { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.bd .bar:hover .t { outline: 2px solid var(--line2); outline-offset: 1px; }
+.bd .stack { display: flex; height: 16px; gap: 2px; border-radius: 4px; overflow: hidden; margin: 6px 0 8px; }
+.bd .stack i { display: block; height: 100%; min-width: 2px; }
+.bd .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--body); }
+.bd .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+.bd .trend { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; align-items: end; height: 70px; margin-top: 6px; }
+.bd .trend .c { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 3px; text-align: center; font-size: 10.5px; color: var(--muted); }
+.bd .trend .c .col { align-self: end; width: 100%; max-width: 24px; margin: 0 auto; background: var(--s1); border-radius: 4px 4px 0 0; position: relative; }
+.bd .trend .c .col::after { content: attr(data-v); position: absolute; top: -15px; left: 0; right: 0; font-size: 11px; font-weight: 600; color: var(--fg); }
+.bd .empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+
+.bd .ins { margin-bottom: 16px; }
+.bd .ins .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bd .ins .headline { font: 600 15px/1.4 var(--font-ui); color: var(--fg); margin: 6px 0 10px; }
+.bd .ins .cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.bd .imp { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.bd .imp .t { font-weight: 700; color: var(--fg); font-size: 13.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.bd .imp .w { font-size: 13px; color: var(--body); margin-top: 4px; }
+.bd .imp .y { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.bd .imp .p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.bd .tag.p1 { background: var(--red-soft); color: var(--red); } .bd .tag.p2 { background: var(--amber-soft); color: var(--amber); } .bd .tag.p3 { background: var(--soft); color: var(--muted); }
+.bd ul.plain { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--body); }
+.bd ul.plain li { margin-bottom: 5px; }
+.bd .ins select { border: 1px solid var(--line2); border-radius: 8px; padding: 5px 8px; background: var(--surface); color: var(--fg); font-size: 12.5px; }
+
+.bd .dl { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.bd table.deals td.what { max-width: 460px; }
+.bd table.deals td.what .x { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: pre-wrap; }
+.bd .tag.new { background: var(--amber-soft); color: var(--amber); } .bd .tag.triaged { background: var(--ai-soft); color: var(--ai); } .bd .tag.progress { background: var(--mint-soft); color: var(--blue); } .bd .tag.done { background: var(--green-soft); color: var(--green); } .bd .tag.wontfix { background: var(--soft); color: var(--muted); }
+.bd .tag.high { background: var(--red-soft); color: var(--red); } .bd .tag.medium { background: var(--amber-soft); color: var(--amber); } .bd .tag.low { background: var(--soft); color: var(--muted); }
+.bd td.res { max-width: 360px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+.bd tr.open td { cursor: pointer; }
+.bd tr.detail td { background: var(--soft); font-size: 12.5px; white-space: pre-wrap; }
+.bd tr.detail td b { color: var(--fg); }
+
+@media (max-width: 1100px) { .bd .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bd .grid { grid-template-columns: minmax(0, 1fr); } .bd .ins .cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .bd { padding: 16px; } .bd .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bd table.deals td.what { max-width: none; } }

@@ -1,6 +1,6 @@
 // Server-side proxy between the feedback page and n8n. The browser never sees the n8n URL or the key.
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || 'https://degreesight.app.n8n.cloud/webhook';
-const ROUTES = { feedback: 'sales-intake/feedback', companies: 'sales-intake/companies', reps: 'sales-intake/reps' };
+const ROUTES = { feedback: 'sales-intake/feedback', companies: 'sales-intake/companies', reps: 'sales-intake/reps', board: 'sales-intake/feedback-board' };
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -23,6 +23,16 @@ module.exports = async function handler(req, res) {
     return;
   }
   if (!k && !email) { res.status(401).json({ ok: false, error: 'Pick your name first.' }); return; }
+  if (body.action === 'board') {
+    // Board data: every ticket + weekly reviews for admins, own tickets for reps (n8n decides).
+    try {
+      const r = await fetch(N8N_BASE + '/' + ROUTES.board, { method: 'POST', headers: { 'content-type': 'application/json', 'x-intake-key': key }, body: JSON.stringify({ k, email }) });
+      const text = await r.text();
+      let data; try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { ok: false, error: 'Unexpected response from n8n' }; }
+      res.status(r.status).json(data);
+    } catch (e) { res.status(502).json({ ok: false, error: 'Could not reach n8n.' }); }
+    return;
+  }
   if (body.action === 'companies') {
     // Typeahead for the Institution field: HubSpot company search, signed-in reps only.
     const q = String(body.q || '').slice(0, 80);
