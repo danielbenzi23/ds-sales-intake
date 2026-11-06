@@ -26,7 +26,7 @@ window.DSProposal = (function () {
   function PD() { return window.DSCalc ? DSCalc.proposalData() : null; }
   function lines(t) { return String(t || '').split('\n').map(function (s) { return s.replace(/^\s*[-*•]\s*/, '').trim(); }).filter(Boolean); }
   function sisName() { var v = V(); return v.sis_name && v.sis_name !== 'Unknown' ? v.sis_name : 'your SIS'; }
-  function crmName() { var v = V(); return v.crm_name && ['Unknown', 'None'].indexOf(v.crm_name) < 0 ? v.crm_name : 'your CRM'; }
+  function crmName() { var v = V(); if (v.crm_name === 'Other' && v.crm_other) return v.crm_other; return v.crm_name && ['Unknown', 'None'].indexOf(v.crm_name) < 0 ? v.crm_name : 'your CRM'; }
 
   function defaults() {
     var v = V(), d = D(), pd = PD() || {}, abbr = pd.abbr || ((d.institution || {}).name) || 'your institution', inst = pd.inst || (d.institution || {}).name || '';

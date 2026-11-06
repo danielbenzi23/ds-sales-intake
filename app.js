@@ -85,6 +85,7 @@
   }
 
   function fieldHtml(f) {
+    if (f.key === 'crm_other' && S.values.crm_name !== 'Other' && !S.values.crm_other) return '';
     var v = S.values[f.key], origin = S.origin[f.key], ai = (S.dossier.fields || {})[f.key];
     var tag = '';
     if (origin === 'ai' && ai) tag = '<button type="button" class="ai ' + (ai.confidence === 'low' ? 'low' : '') + '" data-ev="' + f.key + '" title="Prefilled from the sources. Click for the evidence.">AI · ' + esc(ai.confidence) + (ai.evidence && ai.evidence[0] ? ' · ' + esc(ai.evidence[0].ref) : '') + '</button>';
@@ -177,6 +178,7 @@
       if (f.type === 'multi') { var arr = Array.isArray(S.values[k]) ? S.values[k].slice() : []; var i = arr.indexOf(o); if (i >= 0) arr.splice(i, 1); else arr.push(o); S.values[k] = arr; }
       else S.values[k] = S.values[k] === o ? '' : o;
       S.origin[k] = 'rep';
+      if (k === 'crm_name' && S.values.crm_name !== 'Other' && S.values.crm_other) { S.values.crm_other = ''; S.origin.crm_other = 'rep'; }
       if (ITEM_OF[k] === 'kickoff') { chip.parentNode.parentNode.outerHTML = fieldHtml(f); touch(null); } else touch(ITEM_OF[k]);
       return;
     }

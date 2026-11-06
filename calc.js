@@ -61,7 +61,7 @@ window.DSCalc = (function () {
   };
   var PORTAL_RATE = 12000, CAMPUS_RATE = 15000;
   var MAP_SIS = { 'Colleague': 'Colleague', 'Banner': 'Banner', 'PeopleSoft': 'PeopleSoft', 'Workday Student': 'Workday Student', 'Jenzabar J1': 'Jenzabar', 'Jenzabar CX': 'Jenzabar', 'SAP': 'Homegrown / other', 'Anthology / CampusNexus / CampusVue': 'Anthology Student', 'Ellucian PowerCampus': 'PowerCampus', 'Homegrown or other': 'Homegrown / other' };
-  var MAP_CRM = { 'Slate': 'Slate', 'Salesforce (standard)': 'Salesforce', 'Salesforce Education Cloud': 'Salesforce', 'TargetX': 'TargetX', 'Element 451': 'Element451', 'HubSpot': 'HubSpot', 'None': 'None', 'Ellucian Recruit': 'Other', 'Radius': 'Other', 'EAB Navigate': 'Other', 'Generic SFTP CRM': 'Other' };
+  var MAP_CRM = { 'Slate': 'Slate', 'Salesforce (standard)': 'Salesforce', 'Salesforce Education Cloud': 'Salesforce', 'TargetX': 'TargetX', 'Element 451': 'Element451', 'HubSpot': 'HubSpot', 'None': 'None', 'Ellucian Recruit': 'Other', 'Radius': 'Other', 'EAB Navigate': 'Other', 'Generic SFTP CRM': 'Other', 'Anthology Reach': 'Other', 'Other': 'Other' };
   var MAP_AUDIT = { 'DegreeWorks': 'Degree Works', 'uAchieve / DARS': 'DARS / uAchieve', 'Stellic': 'Stellic', 'Built into SIS': 'None', 'None': 'None' };
   function stackRate(kind, name) { var hit = STACK[kind].filter(function (r) { return r[0] === name; })[0]; return hit ? hit[1] : STACK[kind][STACK[kind].length - 1][1]; }
 
@@ -258,7 +258,7 @@ window.DSCalc = (function () {
     // model + options
     h += '<div class="calc-bar"><div class="seg" role="tablist"><button type="button" data-ptab="standard" class="' + (P.tab === 'standard' ? 'on' : '') + '">Standard</button><button type="button" data-ptab="enterprise" class="' + (P.tab === 'enterprise' ? 'on' : '') + '">Enterprise</button></div>' +
       '<div class="opt-tabs">' + P.opts.map(function (x, i) { return '<button type="button" class="opt-tab' + (i === P.cur ? ' on' : '') + '" data-opt="' + i + '">' + (i === P.primary ? '<span class="star" title="Primary: syncs to HubSpot">&#9733;</span>' : '<span class="star off" data-mkprim="' + i + '" title="Make this the primary option (syncs to HubSpot)" role="button" aria-label="Make primary">&#9734;</span>') + esc(x.name) + (P.opts.length > 1 ? ' <span class="x" data-delopt="' + i + '" title="Remove option">&times;</span>' : '') + '</button>'; }).join('') +
-      '<button type="button" class="opt-add" id="p-addopt">+ Add option</button></div></div>';
+      '<button type="button" class="opt-add" id="p-addopt">+ Add option</button><span class="star-legend" title="Click the empty star on another option to make it the one HubSpot gets"><span class="star">&#9733;</span> = synced to HubSpot</span></div></div>';
 
     // inputs
     h += '<div class="calc-grid"><section class="card"><div class="card-h">' + (P.tab === 'standard' ? 'Standard: one school, college, or university' : 'Enterprise: systems, multi-campus and tech stack') + '</div><div class="card-b">' +

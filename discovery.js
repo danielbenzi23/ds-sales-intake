@@ -59,7 +59,7 @@ window.DSDiscovery = (function () {
       (x.builtAt ? '<p class="hint" style="margin:10px 0 0">Brief built ' + day(x.builtAt) + ' when the deal moved to Discovery.</p>' : '<p class="hint" style="margin:10px 0 0">The Slack brief has not run for this deal yet; this page shows what the intake sources found.</p>') + '</div></div>';
     h += window.DSDrawer.html('disc-inputs', 'Pricing calculator inputs', esc((pr && pr.fte) || inst.fte ? fmt((pr && pr.fte) || inst.fte) + ' FTE' : 'FTE missing'), '<div class="dgrid1">' +
       f('Enrollment (FTE)', (pr && pr.fte) || inst.fte, 'missing in HubSpot') +
-      f('SIS', v.sis_name || xc.current_sis) + f('CRM', v.crm_name || xc.current_crm_and_enrollments_systems) + f('Degree audit', v.audit_engine) +
+      f('SIS', v.sis_name || xc.current_sis) + f('CRM', (v.crm_name === 'Other' && v.crm_other ? v.crm_other : v.crm_name) || xc.current_crm_and_enrollments_systems) + f('Degree audit', v.audit_engine) +
       f('Control', xc.institutional_control_public_private) + f('Catalog', xc.catalog_type) +
       (pr ? f('Primary option', pr.primary + ' · ' + money(pr.annual) + '/yr') : '') + '</div>');
     h += '</aside><main class="calc-main">';

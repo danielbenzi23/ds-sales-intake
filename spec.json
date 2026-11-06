@@ -51,7 +51,8 @@
           "hint": "Slate and standard Salesforce are routine. Education Cloud, Element 451, TargetX, HubSpot: install base of zero or one.",
           "say": "What CRM does admissions run on, and which edition?",
           "fields": [
-            { "key": "crm_name", "label": "CRM", "type": "choice", "options": ["Slate", "Salesforce (standard)", "Salesforce Education Cloud", "TargetX", "Element 451", "HubSpot", "Ellucian Recruit", "Radius", "EAB Navigate", "Generic SFTP CRM", "None", "Unknown"] },
+            { "key": "crm_name", "label": "CRM", "type": "choice", "options": ["Slate", "Salesforce (standard)", "Salesforce Education Cloud", "TargetX", "Element 451", "HubSpot", "Ellucian Recruit", "Anthology Reach", "Radius", "EAB Navigate", "Generic SFTP CRM", "Other", "None", "Unknown"] },
+            { "key": "crm_other", "label": "Other CRM: which one", "type": "text" },
             { "key": "crm_edition", "label": "Edition / notes", "type": "text" }
           ] },
         { "id": "q7", "n": 7, "quote": true, "title": "What they expect written back",

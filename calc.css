@@ -137,3 +137,7 @@ details.card.fold > summary .fold-sum { margin-left: 0; }
 .yr-chip { border: 1px solid var(--line2); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; color: var(--fg); background: var(--soft); }
 table.yrs td.r input.num { max-width: 110px; }
 .linkbtn { border: 0; background: none; padding: 0; color: var(--blue); font: inherit; cursor: pointer; text-decoration: underline; }
+
+/* star legend next to the option tabs */
+.star-legend { font-size: 12px; color: var(--muted); margin-left: 4px; white-space: nowrap; }
+.star-legend .star { color: #F59E0B; }
