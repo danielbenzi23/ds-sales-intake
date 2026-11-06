@@ -36,3 +36,5 @@
 .fb .sug .opt:hover, .fb .sug .opt:focus { background: var(--soft); outline: 0; }
 .fb .sug .n { display: block; font-weight: 600; font-size: 13.5px; }
 .fb .sug .m { display: block; font-size: 12px; color: var(--muted); }
+.fb .gate .chips { margin-top: 12px; }
+.fb .gate .chip { padding: 8px 14px; font-size: 13.5px; }

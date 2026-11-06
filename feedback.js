@@ -11,6 +11,8 @@
   var params = new URLSearchParams(location.search);
   var fromUrl = (params.get('k') || '').replace(/[^a-z0-9]/gi, '');
   var KEY = fromUrl || (store.get('ds-intake-key') || '');
+  var EMAIL = store.get('ds-feedback-email') || '';
+  function ident() { return KEY ? { k: KEY } : { email: EMAIL }; }
   var PRE = { institution: params.get('institution') || '', deal_id: (params.get('deal') || '').replace(/[^0-9]/g, '') };
 
   var CATS = [
@@ -29,17 +31,42 @@
     $('h-user').innerHTML = '';
     $('fb').innerHTML = '<div class="gate"><h2>' + esc(title) + '</h2><p>' + msg + '</p></div>';
   }
-  if (!KEY) { gate('Open your personal link', 'This page needs your personal access link, the same one that opens My deals. Ask Daniel for it, then open it once on this browser and you stay signed in.'); return; }
+  if (!KEY) { whoAreYou(); return; }
+
+  // No personal link: pick a name from the team list; the choice is remembered on this browser.
+  function whoAreYou() {
+    fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'reps' }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (r) {
+        var reps = (r && r.reps) || [];
+        if (!reps.length) { gate('Could not load the team list', 'Reload the page in a minute, or ask Daniel for your personal link.'); return; }
+        var saved = reps.filter(function (x) { return x.email === EMAIL; })[0];
+        if (saved) { USER = { name: saved.name, email: saved.email }; header(); render(); return; }
+        $('h-user').innerHTML = '';
+        $('fb').innerHTML = '<div class="gate"><h2>Who are you?</h2><p>Pick your name once; this browser remembers it.</p><div class="chips" id="who">' +
+          reps.map(function (x) { return '<button type="button" class="chip" data-email="' + esc(x.email) + '">' + esc(x.name) + '</button>'; }).join('') + '</div></div>';
+        document.querySelectorAll('#who .chip').forEach(function (b) { b.addEventListener('click', function () {
+          EMAIL = b.getAttribute('data-email'); store.set('ds-feedback-email', EMAIL);
+          USER = { name: b.textContent, email: EMAIL }; header(); render();
+        }); });
+      })
+      .catch(function () { gate('Could not load the page', 'The connection failed. Reload the page in a minute.'); });
+  }
+  function header() {
+    $('h-user').innerHTML = '<span class="who-chip">' + esc(USER.name || USER.email) + '</span>' +
+      (KEY ? '<a class="btn ghost" href="/">My deals</a>' : '<button type="button" class="btn ghost" id="b-notme">Not me</button>');
+    var nm = $('b-notme'); if (nm) nm.addEventListener('click', function () { store.del('ds-feedback-email'); EMAIL = ''; USER = null; whoAreYou(); });
+  }
 
   // Reuse the My deals sign-in check so the header shows who is reporting.
-  fetch('/api/intake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'deals', k: KEY }) })
+  if (KEY) fetch('/api/intake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'deals', k: KEY }) })
     .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Bad response' }; }); })
     .then(function (r) {
       if (!r.ok) { store.del('ds-intake-key'); store.del('ds-intake-user'); gate('Access link not valid', esc(r.error || 'Could not sign you in.')); return; }
       store.set('ds-intake-key', KEY);
       USER = r.user || {};
       if (fromUrl) { try { history.replaceState(null, '', '/feedback' + (PRE.institution || PRE.deal_id ? '?' + params.toString().replace(/(^|&)k=[^&]*/, '').replace(/^&/, '') : '')); } catch (e) { } }
-      $('h-user').innerHTML = '<span class="who-chip">' + esc(USER.name || USER.email) + '</span><a class="btn ghost" href="/">My deals</a>';
+      header();
       render();
     })
     .catch(function () { gate('Could not load the page', 'The connection failed. Reload the page in a minute.'); });
@@ -100,7 +127,7 @@
       if (q.length < 2) { close(); return; }
       SUG.timer = setTimeout(function () {
         var seq = ++SUG.seq;
-        fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'companies', k: KEY, q: q }) })
+        fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ action: 'companies', q: q }, ident())) })
           .then(function (r) { return r.json().catch(function () { return {}; }); })
           .then(function (r) { if (seq !== SUG.seq || document.activeElement !== inp) return; show((r && r.companies) || []); })
           .catch(function () { });
@@ -117,7 +144,7 @@
     if (!S.category) { st.className = 'state err'; st.textContent = 'Pick a category.'; return; }
     if (S.text.description.trim().length < 10) { st.className = 'state err'; st.textContent = 'Describe what happened (a sentence is enough).'; $('f-desc').focus(); return; }
     var btn = $('b-send'); btn.disabled = true; st.textContent = 'Sending…';
-    var payload = { k: KEY, feedback: { category: S.category, type: S.type, priority: S.priority, institution: S.text.institution, company_id: S.company ? S.company.id : '', deal_id: PRE.deal_id, links: S.text.links, description: S.text.description, expected: S.text.expected } };
+    var payload = Object.assign({}, ident()); payload.feedback = { category: S.category, type: S.type, priority: S.priority, institution: S.text.institution, company_id: S.company ? S.company.id : '', deal_id: PRE.deal_id, links: S.text.links, description: S.text.description, expected: S.text.expected };
     fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
       .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Bad response' }; }); })
       .then(function (r) {
