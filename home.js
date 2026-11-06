@@ -53,6 +53,7 @@
     $('h-title').textContent = admin ? 'All intake pages' : 'My deals';
     $('h-meta').innerHTML = '<span>' + DEALS.length + ' open DS Sales deals' + (admin ? ' across the team' : ' you own in HubSpot') + '</span>';
     $('h-user').innerHTML = '<span class="who-chip">' + esc(USER.name || USER.email) + (admin ? ' <span class="pill">Admin</span>' : '') + '</span>' +
+      '<a class="btn ghost" href="/feedback">Report an issue</a>' +
       '<button class="btn ghost" type="button" id="b-signout">Sign out</button>';
     $('b-signout').addEventListener('click', function () {
       store.del('ds-intake-key'); store.del('ds-intake-user');

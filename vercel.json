@@ -24,6 +24,10 @@
   ],
   "rewrites": [
     {
+      "source": "/feedback",
+      "destination": "/feedback.html"
+    },
+    {
       "source": "/:deal([0-9]+)",
       "destination": "/deal.html"
     }
