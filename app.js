@@ -24,7 +24,7 @@
   var ME = null; try { ME = JSON.parse(store.get('ds-intake-user') || 'null'); } catch (e) { ME = null; }
   $('who').value = (ME && ME.name) || store.get('ds-intake-who') || '';
   if (ME && !isDemo) { var back = document.createElement('a'); back.href = '/'; back.className = 'back-link'; back.textContent = ME.role === 'admin' ? '← All deals' : '← My deals'; var logo = document.querySelector('.top .logo'); logo.parentNode.insertBefore(back, logo); }
-  $('who').addEventListener('input', function () { store.set('ds-intake-who', $('who').value); });
+  $('who').addEventListener('input', function () { store.set('ds-intake-who', $('who').value); if (window.DSCalc && VIEWS.pricing && !$(VIEWS.pricing).hidden) { try { DSCalc.render(); } catch (e) { } } });
 
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, msg.length > 90 ? 6000 : 2600); }
   function banner(kind, html) { $('banner').innerHTML = html ? '<div class="' + kind + '">' + html + '</div>' : ''; }
@@ -52,7 +52,13 @@
     dirty: function () { S.dirty = true; setSaveState(); saveDraft(); }, save: function () { save(); },
     who: function () { return $('who').value.trim(); },
     // Deal owner (signed in with their personal link) or an admin: the intake questions do not block pricing approval.
-    isOwner: function () { if (!ME) return false; if (ME.role === 'admin') return true; var dl = (S.dossier || {}).deal || {}; var oe = String(dl.ownerEmail || '').toLowerCase(), on = String(dl.ownerName || '').trim().toLowerCase(); if (oe && String(ME.email || '').toLowerCase() === oe) return true; return !!on && String(ME.name || '').trim().toLowerCase() === on; }, needWho: function () { $('who').focus(); toast('Add your name first, so the team knows who approved it.'); },
+    isOwner: function () {
+      var dl = (S.dossier || {}).deal || {}; var oe = String(dl.ownerEmail || '').toLowerCase(), on = String(dl.ownerName || '').trim().toLowerCase();
+      if (ME) { if (ME.role === 'admin') return true; if (oe && String(ME.email || '').toLowerCase() === oe) return true; if (on && String(ME.name || '').trim().toLowerCase() === on) return true; }
+      // Opened from the Slack or HubSpot link (no personal sign-in): the name box matches the deal owner (full name or first name).
+      var w = $('who').value.trim().toLowerCase(); if (!w || !on) return false;
+      return w === on || w === on.split(/\s+/)[0];
+    }, needWho: function () { $('who').focus(); toast('Add your name first, so the team knows who approved it.'); },
     showView: function (v) { showView(v); window.scrollTo({ top: 0 }); },
     goItem: function (id) { showView('intake'); var el = document.getElementById(id); if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }
   };
