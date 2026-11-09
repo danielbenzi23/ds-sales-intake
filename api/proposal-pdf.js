@@ -4,9 +4,10 @@ const N8N_BASE = process.env.N8N_WEBHOOK_BASE || 'https://degreesight.app.n8n.cl
 const SITE = process.env.SITE_BASE || 'https://ds-sales-intake.vercel.app';
 
 async function launch() {
-  const puppeteer = require('puppeteer-core');
+  // Both packages ship as ES modules: load them with import(), not require().
+  const pm = await import('puppeteer-core'); const puppeteer = pm.default || pm;
   if (process.env.CHROME_PATH) return puppeteer.launch({ executablePath: process.env.CHROME_PATH, args: ['--no-sandbox'] });
-  const chromium = require('@sparticuz/chromium');
+  const cm = await import('@sparticuz/chromium'); const chromium = cm.default || cm;
   return puppeteer.launch({ args: chromium.args, executablePath: await chromium.executablePath(), headless: true, defaultViewport: { width: 1200, height: 900 } });
 }
 
