@@ -117,3 +117,18 @@ table.prod.yrsched .r { text-align: right; }
   body.print-proposal .doc .quote-opt { break-inside: avoid; }
 }
 .doc table.prod td.n .conc { display: block; white-space: normal; }
+
+.attach-st.ok { color: var(--green, #15803D) !important; }
+.attach-st.no { color: #B91C1C !important; }
+
+/* Before you send + proof step */
+.pr-check .card-h { display: flex; justify-content: space-between; align-items: center; }
+.pr-count { font: 600 12px var(--font-body, inherit); color: var(--muted); }
+.pr-check .qlist a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.prop-review label.rv { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.35; margin: 4px 0; cursor: pointer; }
+.prop-review label.rv input { margin-top: 2px; }
+.flash { animation: prflash 1.6s ease; }
+@keyframes prflash { 0%, 60% { box-shadow: 0 0 0 3px rgba(37, 99, 235, .45); } 100% { box-shadow: none; } }
+
+.prop-edit textarea.t.big { min-height: 180px; }
+.prop-edit textarea.t { resize: vertical; }

@@ -259,7 +259,7 @@ window.DSCalc = (function () {
     // model + options
     h += '<div class="calc-bar"><div class="seg" role="tablist"><button type="button" data-ptab="standard" class="' + (P.tab === 'standard' ? 'on' : '') + '">Standard</button><button type="button" data-ptab="enterprise" class="' + (P.tab === 'enterprise' ? 'on' : '') + '">Enterprise</button></div>' +
       '<div class="opt-tabs">' + P.opts.map(function (x, i) { return '<button type="button" class="opt-tab' + (i === P.cur ? ' on' : '') + '" data-opt="' + i + '">' + (i === P.primary ? '<span class="star" title="Primary: syncs to HubSpot">&#9733;</span>' : '<span class="star off" data-mkprim="' + i + '" title="Make this the primary option (syncs to HubSpot)" role="button" aria-label="Make primary">&#9734;</span>') + esc(x.name) + (P.opts.length > 1 ? ' <span class="x" data-delopt="' + i + '" title="Remove option">&times;</span>' : '') + '</button>'; }).join('') +
-      '<button type="button" class="opt-add" id="p-addopt">+ Add option</button><span class="star-legend" title="Click the empty star on another option to make it the one HubSpot gets"><span class="star">&#9733;</span> = synced to HubSpot</span></div></div>';
+      '<button type="button" class="opt-add" id="p-addopt">+ Add option</button><span class="star-legend" title="Click the empty star on another option to make it the one HubSpot gets"><span class="star">&#9733;</span> = synced to HubSpot</span></div><p class="hint opt-hint">Each tab is one option the school sees in the proposal. Turn products on or off inside each option; the &#9733; option is the one HubSpot gets.</p></div>';
 
     // inputs
     h += '<div class="calc-grid"><section class="card"><div class="card-h">' + (P.tab === 'standard' ? 'Standard: one school, college, or university' : 'Enterprise: systems, multi-campus and tech stack') + '</div><div class="card-b">' +
@@ -463,6 +463,7 @@ window.DSCalc = (function () {
     },
     load: function (saved) { P = saved && saved.v ? saved : fresh(); if (!P.scopeOverride) P.scopeOverride = {}; if (P.cur >= P.opts.length) P.cur = 0; render(); },
     state: function () { return P; },
+    gate: function () { return P ? gate() : null; },
     summary: summary,
     recapLines: recapLines,
     proposalData: function () {

@@ -28,6 +28,8 @@ window.DSProposal = (function () {
   function sisName() { var v = V(); return v.sis_name && v.sis_name !== 'Unknown' ? v.sis_name : 'your SIS'; }
   function crmName() { var v = V(); if (v.crm_name === 'Other' && v.crm_other) return v.crm_other; return v.crm_name && ['Unknown', 'None'].indexOf(v.crm_name) < 0 ? v.crm_name : 'your CRM'; }
 
+  function paras(s) { return String(s || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  var TRENDS = 'First-time, first-year pipelines are softening nationally; institutions are diversifying enrollment with transfer, online, graduate, and adult learners.\n80% of U.S. colleges cannot tell a student how their credits will transfer before the point of application, yet more than 50% of students will not consider applying without that answer.';
   function defaults() {
     var v = V(), d = D(), pd = PD() || {}, abbr = pd.abbr || ((d.institution || {}).name) || 'your institution', inst = pd.inst || (d.institution || {}).name || '';
     var ch = [];
@@ -42,6 +44,7 @@ window.DSProposal = (function () {
     var c = (d.contacts || [])[0] || {};
     return {
       challenge: ch.join('\n'), goals: go.join('\n'),
+      trends: TRENDS,
       summary: inst + ' wants to grow its transfer student population and give prospective students a fast, responsive answer about their credits. DegreeSight helps institutions convert more of their prospects while reducing the time spent between the Enrollment and Registrar offices.',
       contact: signer || [c.name, c.title].filter(Boolean).join(', ') + (c.email ? ' (' + c.email + ')' : ''),
       address: (d.institution || {}).domain ? (d.institution || {}).domain : ''
@@ -103,7 +106,7 @@ window.DSProposal = (function () {
     h += '<div><div class="eb">What We Heard</div><h3>Listening first: your challenge in your words</h3>' +
       '<h4>Challenge</h4><ul class="d">' + lines(t.challenge).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
       '<h4>Goals / Objectives</h4><ul class="d">' + lines(t.goals).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
-      '<h4>National trends</h4><ul class="d"><li>First-time, first-year pipelines are softening nationally; institutions are diversifying enrollment with transfer, online, graduate, and adult learners.</li><li>80% of U.S. colleges cannot tell a student how their credits will transfer before the point of application, yet more than 50% of students will not consider applying without that answer.</li></ul></div>';
+      '<h4>National trends</h4><ul class="d">' + lines(t.trends || TRENDS).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></div>';
     h += '<div><div class="eb">The Impact</div><h3>Credit transparency drives enrollment</h3><div class="pills"><span class="pill">2x More Transfer Leads</span><span class="pill">3x Faster Processing</span><span class="pill">25% Higher Yield</span></div><p>DegreeSight is a Transfer Credit Workflow Engine: a cloud-based enrollment, degree audit, and student success platform designed to help higher education institutions grow enrollment and evaluate and manage transfer credits efficiently.</p></div>';
     // Implementation SLAs (proposal skill v2.3, Drew Melendres, Oct 14 2026): Inbound 60 days from the Engagement Start Date, Insight 120 days from contract signature.
     var hasInsight = (pd.opts || []).some(function (o) { return (o.rows || []).some(function (r) { return r.key === 'Insight'; }); });
@@ -111,7 +114,7 @@ window.DSProposal = (function () {
       (hasInsight ? '<p>Insight is generally live within 120 days of contract signature, depending on your team availability and data readiness.</p>' : '<p><b>Scope note.</b> This engagement is scoped to Inbound. Insight is not included in the current agreement. It can be added later under a separate schedule.</p>') +
       '<p class="rmnote">Timelines are typical and adjust to each institution&#39;s data readiness and team availability. Custom development needs may further extend timelines depending on scope.</p>' +
       (pd.scope === 'custom' ? '<p><b>Scope note.</b> Custom development is scoped by our Solutions Engineering team and priced as a rough order of magnitude until the stories and prototype are defined.</p>' : '') + '</div>';
-    h += '<div><div class="eb">Executive Summary</div><h3>Growing transfer at ' + esc(inst) + '</h3><p>' + esc(t.summary) + '</p><p>DegreeSight will empower ' + esc(inst) + ' with a ' + esc(abbr) + '-branded transcript evaluation engine integrated with ' + esc(sisName()) + (crmName() !== 'your CRM' ? ' and ' + esc(crmName()) : '') + ', so students receive an instant unofficial evaluation and your team receives the lead.</p></div>';
+    h += '<div><div class="eb">Executive Summary</div><h3>Growing transfer at ' + esc(inst) + '</h3>' + (paras(t.summary).length > 1 ? paras(t.summary).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') : '<p>' + esc(t.summary) + '</p><p>DegreeSight will empower ' + esc(inst) + ' with a ' + esc(abbr) + '-branded transcript evaluation engine integrated with ' + esc(sisName()) + (crmName() !== 'your CRM' ? ' and ' + esc(crmName()) : '') + ', so students receive an instant unofficial evaluation and your team receives the lead.</p>') + '</div>';
     h += '<div class="quote"><div><div class="eb">The Investment</div><h3>Quote</h3><div class="cards"><div class="card"><div class="ml">Quote ref.</div><div class="mv">' + esc(ref) + '</div></div><div class="card"><div class="ml">Issue date</div><div class="mv">' + esc(issue) + '</div></div><div class="card"><div class="ml">Expires</div><div class="mv">' + esc(exp) + '</div></div><div class="card"><div class="ml">Currency</div><div class="mv">USD</div></div></div>' +
       '<div class="cards two" style="margin-top:8px"><div class="card"><div class="ml">Seller</div><div class="pn">DegreeSight</div>1401 Lavaca St, Unit 41477<br>Austin, TX 78701, US<div class="ml" style="margin-top:6px">Contact</div>' + esc(rep) + (repMail ? ' (' + esc(repMail) + ')' : '') + '</div>' +
       '<div class="card"><div class="ml">Buyer</div><div class="pn">' + esc(inst) + '</div>' + lines(t.address).map(esc).join('<br>') + '<div class="ml" style="margin-top:6px">Contact</div>' + esc(t.contact || '') + '</div></div></div>';
@@ -173,22 +176,26 @@ window.DSProposal = (function () {
     var box = $('proposal'); if (!box || box.hidden) return;
     var g = gate(), pd = PD() || {}, inst = pd.inst || (D().institution || {}).name || '';
     var st = X.ref ? (stale() ? 'stale' : 'ok') : 'none';
-    var side = '<aside class="left prop-side no-print">' +
+    var side = '<aside class="left prop-side no-print">' + checklist(st) +
       '<div class="card gate ' + (st === 'ok' ? 'ready' : 'hold') + '"><div class="gate-top"><div><div class="lbl">' + (st === 'ok' ? 'Proposal ' + esc(X.ref) : st === 'stale' ? 'Pricing changed since ' + esc(X.ref) : g.ok ? 'Ready to generate' : 'Draft preview') + '</div><div class="sub">' +
       (st !== 'none' ? 'Generated ' + fmtD(X.issuedAt) + ' by ' + esc(X.generatedBy) + ' · valid through ' + fmtD(X.expiresAt) : esc(g.ok ? 'Pricing approved by ' + pd.approvedBy : g.why)) + '</div></div></div>' +
       '<div class="card-b" style="display:grid;gap:8px"><button class="btn primary" type="button" id="pr-gen"' + (g.ok ? '' : ' disabled') + ' style="justify-content:center">' + (X.ref ? 'Regenerate (new ref) and save' : 'Generate proposal and save') + '</button>' +
       '<button class="btn" type="button" id="pr-print" style="justify-content:center">Print or save as PDF</button>' +
       (X.ref && msaModified(inst) ? '<p class="hint" style="margin:0;color:var(--amber)">The MSA text was edited: legal review before sending.</p>' : '') +
-      '<p class="hint" style="margin:0">Generating stamps the quote ref, issue date and a 90-day expiry, saves it, and writes the ref and dates to the HubSpot deal and company card. All ' + (pd.opts || []).length + ' options print; the starred one is primary.</p></div></div>' +
-      '<div class="card"><div class="card-h">What we heard</div><div class="card-b prop-edit">' +
-      '<label>Challenge (one bullet per line)<textarea class="t" data-pt="challenge">' + esc(X.text.challenge) + '</textarea></label>' +
-      '<label>Goals / objectives<textarea class="t" data-pt="goals">' + esc(X.text.goals) + '</textarea></label>' +
-      '<label>Executive summary<textarea class="t" data-pt="summary">' + esc(X.text.summary) + '</textarea></label>' +
+      '<p class="hint" style="margin:0">Generating stamps the quote ref, issue date and a 90-day expiry, saves it, and writes the ref and dates to the deal and company card. Proof it below; marking it reviewed attaches the PDF to the HubSpot deal. All ' + (pd.opts || []).length + ' options print; the starred one is primary.</p></div></div>' +
+      reviewCard(st) +
+      '<div class="card" id="pr-heard"><div class="card-h">What we heard</div><div class="card-b prop-edit">' +
+      '<button class="btn primary" type="button" id="pr-ai" style="justify-content:center"' + (drafting ? ' disabled' : '') + '>' + (drafting ? 'Drafting from the calls, emails and notes…' : '&#10022; Draft with AI') + '</button>' +
+      '<p class="hint" style="margin:0">Writes the challenges, goals, national trends and a two-paragraph summary from this deal\'s calls, emails, notes and the Discovery brief. It only uses what the school said; edit anything before it goes out.</p>' +
+      '<label>Challenge (one bullet per line)<textarea class="t big" data-pt="challenge">' + esc(X.text.challenge) + '</textarea></label>' +
+      '<label>Goals / objectives (one per line)<textarea class="t big" data-pt="goals">' + esc(X.text.goals) + '</textarea></label>' +
+      '<label>National trends (one per line)<textarea class="t" data-pt="trends">' + esc(X.text.trends || TRENDS) + '</textarea></label>' +
+      '<label>Executive summary (a blank line between paragraphs)<textarea class="t big" data-pt="summary">' + esc(X.text.summary) + '</textarea></label>' +
       '<label>Buyer contact<input class="t" data-pt="contact" value="' + esc(X.text.contact) + '"></label>' +
       '<label>Buyer address (one line per row)<textarea class="t" data-pt="address" style="min-height:60px">' + esc(X.text.address) + '</textarea></label>' +
       '<button class="btn" type="button" id="pr-reset" style="justify-content:center">Refill from the intake</button>' +
       '<p class="hint" style="margin:0">Prefilled from the intake (items 9, 11, 13, 14) and the deal contacts. Edit the words before it goes out; they are saved with the intake.</p></div></div>' +
-      '<div class="card"><div class="card-h">Billing contacts</div><div class="card-b prop-edit">' +
+      '<div class="card" id="pr-billing"><div class="card-h">Billing contacts</div><div class="card-b prop-edit">' +
       [['primary', 'Billing contact'], ['alternate', 'Alternate billing contact']].map(function (p) {
         var b = (X.billing || {})[p[0]] || {};
         return '<div class="lbl" style="margin-top:2px">' + p[1] + '</div>' +
@@ -214,14 +221,100 @@ window.DSProposal = (function () {
     reset.addEventListener('click', function () { X.msaEdited = null; if (host) host.dirty(); render(); });
   }
 
+  // ---- Before you send: everything the proposal needs, in order, each one a click away from where it is fixed.
+  function filled(k) { return String((X.text || {})[k] || '').trim().length > 0; }
+  function reviewed() { return !!(X.review && X.review.ref === X.ref && X.review.at); }
+  function attached() { return !!(X.attach && X.attach.ref === X.ref && X.attach.fileId); }
+  function checklist(st) {
+    var pd = PD() || {}, b = (X.billing || {}).primary || {};
+    var items = [
+      [pd.status === 'approved', 'Pricing approved', 'go-pricing'],
+      [filled('challenge') && filled('goals') && filled('summary'), 'What we heard: challenge, goals and summary', 'go-heard'],
+      [filled('contact'), 'Buyer contact', 'go-heard'],
+      [!!(b.name_title || b.email) || 'opt', 'Billing contact (or leave blank for the school to fill in)', 'go-billing'],
+      [st === 'ok', st === 'stale' ? 'Proposal out of date: regenerate it' : 'Proposal generated', 'go-gen'],
+      [st === 'ok' && reviewed(), 'Proofread and marked reviewed', 'go-review'],
+      [st === 'ok' && attached(), 'PDF attached to the HubSpot deal', 'go-review']
+    ];
+    var done = items.filter(function (i) { return i[0] === true; }).length;
+    return '<div class="card pr-check"><div class="card-h">Before you send <span class="pr-count">' + done + ' of ' + items.length + '</span></div><div class="card-b"><ul class="qlist">' +
+      items.map(function (i) { var ok = i[0] === true, opt = i[0] === 'opt'; return '<li class="' + (ok ? '' : opt ? 'opt' : 'no') + '"><span class="qdot ' + (ok ? 'ok' : opt ? 'opt' : 'no') + '">' + (ok ? '&#10003;' : '!') + '</span><span>' + (ok ? esc(i[1]) : '<a href="#" data-go="' + i[2] + '">' + esc(i[1]) + '</a>') + '</span></li>'; }).join('') +
+      '</ul></div></div>';
+  }
+  // ---- Proof before sending: the rep confirms the facts that most often go wrong, then the PDF goes to HubSpot.
+  var RV = [['school', 'School name, contact and address are right'], ['price', 'Prices, discounts and terms match what we agreed'], ['options', 'The right options are in, and the starred one is primary'], ['dates', 'Effective date, issue date and expiry are right'], ['words', 'What we heard and the summary read well for this school'], ['billing', 'Billing contacts are filled in, or left blank on purpose']];
+  function reviewCard(st) {
+    if (st !== 'ok') return '';
+    var r = X.review && X.review.ref === X.ref ? X.review : { checks: {} }, c = r.checks || {};
+    if (reviewed()) return '<div class="card" id="pr-review"><div class="card-h">Proof before sending</div><div class="card-b"><p class="hint attach-st ok" style="margin:0">&#10003; Reviewed by ' + esc(r.by || '') + ' ' + fmtD(r.at) + '. Read the PDF once more before it goes to the school.</p>' + attachLine(st) +
+      '<button class="btn" type="button" id="pr-unreview" style="justify-content:center;margin-top:8px">Undo reviewed</button></div></div>';
+    var all = RV.every(function (x) { return c[x[0]]; });
+    return '<div class="card" id="pr-review"><div class="card-h">Proof before sending</div><div class="card-b prop-review">' +
+      '<p class="hint" style="margin:0 0 6px">Read the document on the right, top to bottom, then tick each line.</p>' +
+      RV.map(function (x) { return '<label class="rv"><input type="checkbox" data-rv="' + x[0] + '"' + (c[x[0]] ? ' checked' : '') + '> ' + esc(x[1]) + '</label>'; }).join('') +
+      '<button class="btn primary" type="button" id="pr-reviewed"' + (all ? '' : ' disabled') + ' style="justify-content:center;margin-top:8px">Reviewed: attach the PDF to HubSpot</button>' +
+      '<button class="btn" type="button" id="pr-askreview" style="justify-content:center;margin-top:6px">Ask Daniel to review it</button>' +
+      (r.asked && r.asked.ref === X.ref ? '<p class="hint" style="margin:6px 0 0">Review requested ' + fmtD(r.asked.at) + '.</p>' : '') +
+      '</div></div>';
+  }
+
+  // Where the PDF stands in HubSpot for the current proposal ref.
+  function attachLine(st) {
+    if (st !== 'ok' || !reviewed()) return '';
+    var a = X.attach || {};
+    if (attaching) return '<p class="hint attach-st" style="margin:0">Creating the PDF and attaching it to the HubSpot deal…</p>';
+    if (a.ref === X.ref && a.fileId) return '<p class="hint attach-st ok" style="margin:0">&#10003; PDF attached to the HubSpot deal ' + fmtD(a.at) + (a.by ? ' by ' + esc(a.by) : '') + ' (in a note, and in Files under Sales Intake Proposals).</p><button class="btn" type="button" id="pr-attach" style="justify-content:center">Attach the PDF again</button>';
+    return (a.ref === X.ref && a.error ? '<p class="hint attach-st no" style="margin:0">The PDF was not attached: ' + esc(a.error) + '</p>' : '') + '<button class="btn" type="button" id="pr-attach" style="justify-content:center">Attach PDF to the HubSpot deal</button>';
+  }
+  var attaching = false, drafting = false;
+  function attach(then) {
+    var pd = PD() || {}, dd = $('proposal-doc'); if (!dd || !X.ref || !host || !host.attachPdf) { if (then) then(); return; }
+    attaching = true; render();
+    var who = host.who ? host.who() : '';
+    host.attachPdf({ html: $('proposal-doc').outerHTML, ref: X.ref, filename: 'DegreeSight Proposal ' + (pd.inst || '') + ' ' + X.ref, attachedBy: who }).then(function (r) {
+      attaching = false;
+      X.attach = r && r.ok ? { ref: X.ref, fileId: r.fileId, noteId: r.noteId, at: r.attachedAt || new Date().toISOString(), by: who } : { ref: X.ref, error: (r && r.error) || 'Unknown error' };
+      if (host.toast) host.toast(r && r.ok ? 'Proposal PDF attached to the HubSpot deal.' : 'Proposal saved, but the PDF was not attached: ' + X.attach.error);
+      if (host) host.dirty();
+      render();
+      if (then) then();
+    });
+  }
+
   function onInput(e) {
     var t = e.target;
+    if (t.matches('[data-rv]')) { if (!X.review || X.review.ref !== X.ref) X.review = { ref: X.ref, checks: {} }; X.review.checks = X.review.checks || {}; X.review.checks[t.getAttribute('data-rv')] = t.checked; if (host) host.dirty(); var rb = $('pr-reviewed'); if (rb) rb.disabled = !RV.every(function (x) { return X.review.checks[x[0]]; }); return; }
     if (t.matches('[data-pb]')) { var pk = t.getAttribute('data-pb').split('.'); X.billing = X.billing || {}; X.billing[pk[0]] = X.billing[pk[0]] || {}; X.billing[pk[0]][pk[1]] = t.value; if (host) host.dirty(); var db = $('proposal-doc'); if (db) { db.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } return; }
     if (t.matches('[data-pt]')) { X.text[t.getAttribute('data-pt')] = t.value; X.edited[t.getAttribute('data-pt')] = true; if (host) host.dirty(); var dd = $('proposal-doc'); if (dd) { dd.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } }
   }
   function onClick(e) {
     var t = e.target;
     if (t.id === 'pr-print') { document.body.classList.add('print-proposal'); window.print(); setTimeout(function () { document.body.classList.remove('print-proposal'); }, 500); return; }
+    var go = t.closest ? t.closest('[data-go]') : null;
+    if (go) { e.preventDefault(); var g = go.getAttribute('data-go'); if (g === 'go-pricing') { if (host && host.go) host.go('pricing', 'p-approve'); return; } var target = { 'go-heard': 'pr-heard', 'go-billing': 'pr-billing', 'go-gen': 'pr-gen', 'go-review': 'pr-review' }[g]; var el = target && $(target); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600); } return; }
+    if (t.id === 'pr-reviewed') { var who = host ? host.who() : ''; if (!who) { if (host) host.needWho(); return; } X.review = Object.assign({}, X.review || {}, { ref: X.ref, by: who, at: new Date().toISOString() }); render(); attach(function () { if (host) host.save(); }); return; }
+    if (t.id === 'pr-unreview') { if (X.review) { X.review.at = ''; X.review.by = ''; } if (host) host.dirty(); render(); return; }
+    if (t.id === 'pr-askreview') { var who2 = host ? host.who() : ''; if (!who2) { if (host) host.needWho(); return; } if (!host || !host.askReview) return; t.disabled = true; t.textContent = 'Sending…'; host.askReview({ ref: X.ref, by: who2 }).then(function (r) { if (r && r.ok) { X.review = Object.assign({ ref: X.ref, checks: {} }, X.review || {}); X.review.asked = { ref: X.ref, at: new Date().toISOString(), by: who2 }; if (host) { host.dirty(); host.toast('Daniel got a Slack message with the link to this proposal.'); } } else if (host) host.toast((r && r.error) || 'Could not send the review request.'); render(); }); return; }
+    if (t.id === 'pr-ai') {
+      if (drafting || !host || !host.draftHeard) return;
+      var hasText = ['challenge', 'goals', 'summary'].some(function (k) { return X.edited[k]; });
+      if (hasText && !window.confirm('Replace the challenge, goals, trends and summary with an AI draft? Your edits to these fields will be overwritten.')) return;
+      drafting = true; render();
+      host.draftHeard().then(function (r) {
+        drafting = false;
+        if (r && r.ok) {
+          X.text.challenge = (r.challenge || []).join('\n'); X.text.goals = (r.goals || []).join('\n');
+          if ((r.trends || []).length) X.text.trends = r.trends.join('\n');
+          X.text.summary = (r.exec_summary || []).join('\n\n');
+          ['challenge', 'goals', 'trends', 'summary'].forEach(function (k) { X.edited[k] = true; });
+          X.aiDraftAt = new Date().toISOString();
+          if (host) { host.dirty(); host.toast('Draft ready. Read it and edit anything before it goes out.'); }
+        } else if (host) host.toast((r && r.error) || 'The AI draft did not work. Try again.');
+        render();
+      });
+      return;
+    }
+    if (t.id === 'pr-attach') { if (attaching) return; attach(function () { if (host) host.save(); }); return; }
     if (t.id === 'pr-reset') { X.text = defaults(); X.edited = {}; if (host) host.dirty(); render(); return; }
     if (t.id === 'pr-gen') {
       if (!gate().ok) return;
@@ -232,6 +325,7 @@ window.DSProposal = (function () {
       X.generatedBy = who; X.pricingApprovedAt = pd.approvedAt;
       if (host) { host.dirty(); host.save(); }
       render();
+      return;
     }
   }
 
@@ -245,6 +339,7 @@ window.DSProposal = (function () {
     },
     refreshDefaults: function () { if (!X || X.ref) return; var d = defaults(); Object.keys(d).forEach(function (k) { if (!X.edited[k]) X.text[k] = d[k]; }); },
     state: function () { return X; },
+    status: function () { if (!X) return {}; var g = !!X.ref; return { generated: g, stale: g && stale(), reviewed: g && !stale() && reviewed(), attached: g && !stale() && attached(), ref: X.ref }; },
     summary: function () { if (!X || !X.ref) return null; var inst = (PD() || {}).inst || ''; return { ref: X.ref, issuedAt: X.issuedAt, expiresAt: X.expiresAt, generatedBy: X.generatedBy, stale: stale(), msaModified: msaModified(inst) }; },
     render: function () { if (X && !X.ref) this.refreshDefaults(); render(); }
   };

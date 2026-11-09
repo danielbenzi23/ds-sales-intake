@@ -1,1 +1,10 @@
-{ "name": "ds-sales-intake", "private": true, "version": "1.0.0", "engines": { "node": "22.x" } }
+{
+  "name": "ds-sales-intake",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "@sparticuz/chromium": "153.0.0",
+    "puppeteer-core": "25.16.0"
+  }
+}

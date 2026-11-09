@@ -36,5 +36,14 @@
       "destination": "/deal.html"
     }
   ],
-  "cleanUrls": false
+  "cleanUrls": false,
+  "functions": {
+    "api/proposal-pdf.js": {
+      "maxDuration": 60,
+      "memory": 2048
+    },
+    "api/intake.js": {
+      "maxDuration": 90
+    }
+  }
 }

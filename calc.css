@@ -145,3 +145,13 @@ table.yrs td.r input.num { max-width: 110px; }
 /* QUOTE items the deal owner may skip: shown as a reminder, not a blocker */
 .qlist li.opt { color: var(--muted); }
 .qdot.opt { background: #FEF3C7; color: #92400E; }
+
+/* option tabs hint */
+.opt-hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+/* step status on the section tabs + next step */
+.views button .vst { display: inline-block; margin-left: 6px; font: 600 11px var(--font-body, inherit); padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); vertical-align: 1px; }
+.views button .vst.ok { background: #DCFCE7; color: #166534; }
+.views button .vst.warn { background: #FEF3C7; color: #92400E; }
+.views button.on .vst { background: rgba(255,255,255,.2); color: #fff; }
+.views .next-step { margin-left: auto; border-color: var(--blue) !important; color: var(--blue) !important; background: var(--surface) !important; }
+.views .next-step.done { border-color: #16A34A !important; color: #166534 !important; }

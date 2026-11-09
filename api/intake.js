@@ -1,6 +1,6 @@
 // Server-side proxy between the intake page and n8n. The browser never sees the n8n URL or the key.
 const N8N_BASE = process.env.N8N_WEBHOOK_BASE || 'https://degreesight.app.n8n.cloud/webhook';
-const ROUTES = { get: 'sales-intake/get', save: 'sales-intake/save', build: 'sales-intake/build', deals: 'sales-intake/deals', token: 'sales-intake/token' };
+const ROUTES = { get: 'sales-intake/get', save: 'sales-intake/save', build: 'sales-intake/build', deals: 'sales-intake/deals', token: 'sales-intake/token', review: 'sales-intake/review', heard: 'sales-intake/heard' };
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');

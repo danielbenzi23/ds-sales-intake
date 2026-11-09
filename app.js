@@ -37,6 +37,43 @@
   function srcByRef(ref) { return (S.dossier.sources || []).filter(function (s) { return s.ref === ref; })[0] || null; }
 
   function saveDraft() { if (!isDemo) store.set('ds-intake-draft-' + DEAL, JSON.stringify({ ts: Date.now(), values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, pricing: DSCalc.state(), proposal: DSProposal.state() })); }
+  // Step status on the section tabs and one "Next step" button, so the rep always knows where they are and what is left.
+  function goTo(v, target) {
+    showView(v);
+    if (!target) return;
+    setTimeout(function () { var el = $(target); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1600); }, 60);
+  }
+  function badge(view, txt, cls) {
+    var b = document.querySelector('.views [data-view="' + view + '"]'); if (!b) return;
+    var s = b.querySelector('.vst'); if (!txt) { if (s) s.remove(); return; }
+    if (!s) { s = document.createElement('span'); b.appendChild(s); }
+    s.className = 'vst ' + (cls || ''); s.textContent = txt;
+  }
+  function updateSteps() {
+    if (!S.dossier || !window.DSCalc || !window.DSProposal) return;
+    var a = assessIntake(S.values), P = DSCalc.state(), g = DSCalc.gate ? DSCalc.gate() : null, ps = DSProposal.status ? DSProposal.status() : {};
+    var approved = !!(P && P.status === 'approved');
+    var got = 5 - (a.quoteMissing || []).length;
+    badge('intake', a.quoteReady ? 'QUOTE ✓' : got + '/5 QUOTE', a.quoteReady ? 'ok' : 'warn');
+    badge('pricing', approved ? 'Approved ✓' : 'Draft', approved ? 'ok' : 'warn');
+    badge('proposal', !ps.generated ? '' : ps.stale ? 'Out of date' : ps.attached ? 'In HubSpot ✓' : ps.reviewed ? 'Reviewed' : 'Generated', ps.stale ? 'warn' : ps.attached ? 'ok' : '');
+    var n;
+    if (!approved) {
+      var block = g && !g.ok ? (g.checks || []).filter(function (c) { return !c.ok && !c.optional; }) : [];
+      n = block.length ? { t: 'Next: ' + block[0].text, v: 'pricing', to: 'p-approve' } : { t: 'Next: approve the pricing', v: 'pricing', to: 'p-approve' };
+    } else if (!ps.generated || ps.stale) n = { t: ps.stale ? 'Next: regenerate the proposal' : 'Next: generate the proposal', v: 'proposal', to: 'pr-gen' };
+    else if (!ps.reviewed) n = { t: 'Next: proof the proposal', v: 'proposal', to: 'pr-review' };
+    else if (!ps.attached) n = { t: 'Next: attach the PDF to HubSpot', v: 'proposal', to: 'pr-review' };
+    else n = { t: 'Ready to send ✓', v: 'proposal', to: 'pr-print', done: true };
+    var nb = $('next-step');
+    if (!nb) { nb = document.createElement('button'); nb.type = 'button'; nb.id = 'next-step'; document.querySelector('.views-in').appendChild(nb); nb.addEventListener('click', function () { goTo(nb.getAttribute('data-v'), nb.getAttribute('data-to')); }); }
+    nb.className = 'next-step' + (n.done ? ' done' : ''); nb.textContent = n.t; nb.setAttribute('data-v', n.v); nb.setAttribute('data-to', n.to);
+  }
+  var stepT = null;
+  function stepsSoon() { clearTimeout(stepT); stepT = setTimeout(updateSteps, 120); }
+  document.addEventListener('input', stepsSoon, true);
+  document.addEventListener('click', stepsSoon, true);
+
   function showView(v) {
     if (!VIEWS[v]) v = 'intake';
     Object.keys(VIEWS).forEach(function (k) { $(VIEWS[k]).hidden = k !== v; });
@@ -45,11 +82,29 @@
     if (v === 'proposal') DSProposal.render();
     if (v === 'discovery') DSDiscovery.render();
     try { history.replaceState(null, '', location.pathname + location.search + (v === 'intake' ? '' : '#' + v)); } catch (e) { }
+    stepsSoon();
   }
   document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); window.scrollTo({ top: 0 }); }); });
   var HOST = {
     values: function () { return S.values; }, dossier: function () { return S.dossier; }, discovery: function () { return S.discovery; }, assess: function () { return assessIntake(S.values); },
     dirty: function () { S.dirty = true; setSaveState(); saveDraft(); }, save: function () { save(); },
+    toast: function (m) { toast(m); },
+    go: function (v, target) { goTo(v, target); },
+    draftHeard: function () {
+      if (isDemo) return Promise.resolve({ ok: false, error: 'Demo page: the AI draft runs only on real deals.' });
+      return api('heard', {});
+    },
+    askReview: function (p) {
+      if (isDemo) return Promise.resolve({ ok: false, error: 'Demo page: review requests go out only on real deals.' });
+      return api('review', { ref: p.ref, by: p.by, institution: (S.dossier.institution || {}).name || '', dealName: (S.dossier.deal || {}).name || '' });
+    },
+    // Proposal PDF: printed on the server with the same print styles, then uploaded to HubSpot Files and attached to the deal.
+    attachPdf: function (p) {
+      if (isDemo) return Promise.resolve({ ok: false, demo: true, error: 'Demo page: the PDF is attached to HubSpot only on real deals.' });
+      return fetch('/api/proposal-pdf', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ deal: DEAL, t: TOKEN }, p)) })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Unexpected response (' + r.status + ').' }; }); })
+        .catch(function () { return { ok: false, error: 'Network error while creating the PDF.' }; });
+    },
     who: function () { return $('who').value.trim(); },
     // Deal owner (signed in with their personal link) or an admin: the intake questions do not block pricing approval.
     isOwner: function () {
@@ -167,6 +222,7 @@
   }
 
   function setSaveState() {
+    stepsSoon();
     var el = $('save-state');
     if (S.dirty) { el.textContent = 'Unsaved changes'; el.className = 'save-state dirty'; }
     else if (S.savedAt) { el.textContent = 'Saved ' + new Date(S.savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + (S.savedBy ? ' by ' + S.savedBy : ''); el.className = 'save-state'; }
