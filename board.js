@@ -96,6 +96,15 @@
       h += '<div class="card ins"><h3>Weekly review</h3><div class="sub">The first review lands next Monday 08:00 (or run the “Feedback Weekly Review” workflow in n8n).</div></div>';
     }
 
+    // Improvement backlog captured by the triage agent while handling tickets (admin)
+    if (admin && DATA.improvements && DATA.improvements.length) {
+      var imps = DATA.improvements.slice().sort(function (a, b) { return (a.status === 'Open' ? 0 : 1) - (b.status === 'Open' ? 0 : 1) || String(a.priority).localeCompare(String(b.priority)); });
+      h += '<div class="card ins"><div class="head"><h3>Improvement backlog · from ticket triage</h3><span class="sub">' + imps.filter(function (x) { return x.status === 'Open'; }).length + ' open</span></div><div class="sub">Patterns and requests the agent spotted while fixing tickets. The weekly review consolidates these.</div><div class="imps">' +
+        imps.slice(0, 20).map(function (x) {
+          return '<div class="imp"><div class="t"><span class="tag ' + String(x.priority || 'p2').toLowerCase() + '">' + esc(x.priority) + '</span><span class="tag ' + (x.status === 'Open' ? 'new' : 'done') + '">' + esc(x.status) + '</span>' + esc(x.title) + '</div>' + (x.detail && x.detail !== x.title ? '<div class="w">' + esc(x.detail) + '</div>' : '') + '<div class="y">' + esc(x.evidence) + (x.created ? ' · ' + esc(x.created) : '') + ' · ' + esc(x.source.replace('triage:', '')) + '</div></div>';
+        }).join('') + '</div></div>';
+    }
+
     // Table
     var reps = count(all, 'rep').map(function (p) { return p[0]; });
     var rows = ranged.filter(function (t) {
