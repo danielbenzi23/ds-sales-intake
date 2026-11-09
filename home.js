@@ -38,7 +38,7 @@
       }
       store.set('ds-intake-key', KEY);
       USER = r.user || {};
-      store.set('ds-intake-user', JSON.stringify({ name: USER.name, role: USER.role }));
+      store.set('ds-intake-user', JSON.stringify({ name: USER.name, email: USER.email || '', role: USER.role }));
       if (!store.get('ds-intake-who') && USER.name) store.set('ds-intake-who', USER.name);
       if (fromUrl) { try { history.replaceState(null, '', '/'); } catch (e) { } }
       DEALS = r.deals || [];
