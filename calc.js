@@ -201,13 +201,14 @@ window.DSCalc = (function () {
     var a = host ? host.assess() : { quoteMissing: [], quoteReady: true };
     var names = { q1: 'Item 1: populations and rules', q5: 'Item 5: SIS, hosting, replacement', q7: 'Item 7: what they expect written back', q8: 'Item 8: does integration gate go-live', q13: 'Item 13: what live means, and the date' };
     var lvl = scopeLevel(), prim = P.opts[P.primary], pt = prim ? totals(prim) : { rows: [] };
+    var owner = !!(host && host.isOwner && host.isOwner());
     var checks = [
-      { ok: a.quoteReady, text: a.quoteReady ? 'All five QUOTE items answered in the intake' : 'QUOTE items missing in the intake', items: (a.quoteMissing || []).map(function (q) { return { id: q, t: names[q] || q }; }) },
+      { ok: a.quoteReady, optional: owner, text: a.quoteReady ? 'All five QUOTE items answered in the intake' : (owner ? 'QUOTE items missing in the intake (optional for you as the deal owner)' : 'QUOTE items missing in the intake'), items: (a.quoteMissing || []).map(function (q) { return { id: q, t: names[q] || q }; }) },
       { ok: P.fte > 0, text: P.fte > 0 ? 'FTE set (' + fmt(P.fte) + (P.fteSource ? ', from ' + P.fteSource : '') + ')' : 'FTE missing: enter it above' },
       { ok: pt.rows.some(function (r) { return !r.oneTime; }), text: 'Primary option has at least one annual license' },
       { ok: lvl !== 'custom' || P.seReviewed, text: lvl === 'custom' ? (P.seReviewed ? 'Solutions Engineer reviewed the custom scope' : 'Custom scope: a Solutions Engineer must review it first') : 'No custom development in scope' }
     ];
-    return { checks: checks, ok: checks.every(function (c) { return c.ok; }) };
+    return { checks: checks, ok: checks.every(function (c) { return c.ok || c.optional; }) };
   }
 
   function touch(keepStatus) {
@@ -230,7 +231,7 @@ window.DSCalc = (function () {
       (P.status === 'approved' ? 'Pricing approved' : g.ok ? 'Ready to approve' : 'Not ready to quote') + '</div><div class="sub">' +
       (P.status === 'approved' ? 'by ' + esc(P.approvedBy) + ', ' + new Date(P.approvedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Before a number goes out') + '</div></div></div>' +
       '<ul class="qlist">' + g.checks.map(function (c) {
-        return '<li class="' + (c.ok ? '' : 'no') + '"><span class="qdot ' + (c.ok ? 'ok' : 'no') + '">' + (c.ok ? '&#10003;' : '!') + '</span><span>' + esc(c.text) +
+        return '<li class="' + (c.ok ? '' : c.optional ? 'opt' : 'no') + '"><span class="qdot ' + (c.ok ? 'ok' : c.optional ? 'opt' : 'no') + '">' + (c.ok ? '&#10003;' : '!') + '</span><span>' + esc(c.text) +
           (c.items && c.items.length ? '<span class="gate-items">' + c.items.map(function (i) { return '<a href="#" data-goitem="' + i.id + '">' + esc(i.t) + '</a>'; }).join('') + '</span>' : '') + '</span></li>';
       }).join('') + '</ul>' +
       '<div class="card-b"><button class="btn primary" type="button" id="p-approve"' + (g.ok && P.status !== 'approved' ? '' : ' disabled') + ' style="width:100%;justify-content:center">' + (P.status === 'approved' ? 'Approved' : 'Approve pricing and save') + '</button>' +

@@ -141,3 +141,7 @@ table.yrs td.r input.num { max-width: 110px; }
 /* star legend next to the option tabs */
 .star-legend { font-size: 12px; color: var(--muted); margin-left: 4px; white-space: nowrap; }
 .star-legend .star { color: #F59E0B; }
+
+/* QUOTE items the deal owner may skip: shown as a reminder, not a blocker */
+.qlist li.opt { color: var(--muted); }
+.qdot.opt { background: #FEF3C7; color: #92400E; }
