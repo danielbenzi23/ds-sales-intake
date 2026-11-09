@@ -55,7 +55,24 @@ window.DSProposal = (function () {
       .replace(/effective as of date of execution/, 'effective as of ' + esc((PD() || {}).effText || 'date of execution'))
       .replace(/<h1 data-part="(\w+)">/g, '<h1 id="msa-part-$1" data-part="$1">');
   }
-  function msaModified(inst) { return X.msaEdited != null && X.msaEdited !== msaVerbatim(inst); }
+  function msaModified(inst) { return X.msaEdited != null && stripBilling(X.msaEdited) !== msaVerbatim(inst); }
+  // Billing Contacts (proposal skill v2.3): yellow-highlighted block at the end of MSA Section 3 so Accounting can set up invoicing.
+  // Only what the rep confirmed is filled in; anything else prints as a blank line for the client to complete at signing.
+  function stripBilling(s) { return String(s || '').replace(/<div class="billing"[^>]*>[\s\S]*?<\/div><!--\/billing-->/g, ''); }
+  function billingBlock() {
+    var b = X.billing || {}, BL = '_______________________________________________';
+    var val = function (c, k) { var v = String(((b[c] || {})[k]) || '').trim(); return v ? esc(v) : BL; };
+    var hl = function (t) { return '<span class="hl">' + t + '</span>'; };
+    var out = '<div class="billing" contenteditable="false"><p>' + hl('<strong>Billing Contacts.</strong> Client designates the following billing contact and alternate billing contact to receive invoices and billing correspondence under this Agreement. Client may update either contact at any time by written notice to Company, including by email.') + '</p>';
+    [['primary', 'Billing Contact'], ['alternate', 'Alternate Billing Contact']].forEach(function (p) {
+      out += '<p class="bt">' + hl('<strong>' + p[1] + '</strong>') + '</p><p class="bl">' + hl('Name and Title: ' + val(p[0], 'name_title')) + '</p><p class="bl">' + hl('Email: ' + val(p[0], 'email')) + '</p><p class="bl">' + hl('Phone: ' + val(p[0], 'phone')) + '</p>';
+    });
+    return out + '</div><!--/billing-->';
+  }
+  function msaWithBilling(html) {
+    var s = stripBilling(html), a = 'compounded monthly.</p>', i = s.indexOf(a);
+    return i < 0 ? s + billingBlock() : s.slice(0, i + a.length) + billingBlock() + s.slice(i + a.length);
+  }
 
   function gate() {
     var pd = PD();
@@ -88,18 +105,23 @@ window.DSProposal = (function () {
       '<h4>Goals / Objectives</h4><ul class="d">' + lines(t.goals).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
       '<h4>National trends</h4><ul class="d"><li>First-time, first-year pipelines are softening nationally; institutions are diversifying enrollment with transfer, online, graduate, and adult learners.</li><li>80% of U.S. colleges cannot tell a student how their credits will transfer before the point of application, yet more than 50% of students will not consider applying without that answer.</li></ul></div>';
     h += '<div><div class="eb">The Impact</div><h3>Credit transparency drives enrollment</h3><div class="pills"><span class="pill">2x More Transfer Leads</span><span class="pill">3x Faster Processing</span><span class="pill">25% Higher Yield</span></div><p>DegreeSight is a Transfer Credit Workflow Engine: a cloud-based enrollment, degree audit, and student success platform designed to help higher education institutions grow enrollment and evaluate and manage transfer credits efficiently.</p></div>';
-    h += '<div><div class="eb">Implementation</div><h3>30 days to go-live. We do the heavy lifting.</h3><p>Inbound and the equivalency management system typically launch within three to four weeks. Insight follows and is generally live within 90 to 120 days of contract signature, depending on your team availability and data readiness.</p>' +
+    // Implementation SLAs (proposal skill v2.3, Drew Melendres, Oct 14 2026): Inbound 60 days from the Engagement Start Date, Insight 120 days from contract signature.
+    var hasInsight = (pd.opts || []).some(function (o) { return (o.rows || []).some(function (r) { return r.key === 'Insight'; }); });
+    h += '<div><div class="eb">Implementation</div><h3>We do the heavy lifting.</h3><p>Inbound and the equivalency management system typically launch within 60 days of the prescribed Engagement Start Date, depending on your team availability and data readiness.</p>' +
+      (hasInsight ? '<p>Insight is generally live within 120 days of contract signature, depending on your team availability and data readiness.</p>' : '<p><b>Scope note.</b> This engagement is scoped to Inbound. Insight is not included in the current agreement. It can be added later under a separate schedule.</p>') +
+      '<p class="rmnote">Timelines are typical and adjust to each institution&#39;s data readiness and team availability. Custom development needs may further extend timelines depending on scope.</p>' +
       (pd.scope === 'custom' ? '<p><b>Scope note.</b> Custom development is scoped by our Solutions Engineering team and priced as a rough order of magnitude until the stories and prototype are defined.</p>' : '') + '</div>';
     h += '<div><div class="eb">Executive Summary</div><h3>Growing transfer at ' + esc(inst) + '</h3><p>' + esc(t.summary) + '</p><p>DegreeSight will empower ' + esc(inst) + ' with a ' + esc(abbr) + '-branded transcript evaluation engine integrated with ' + esc(sisName()) + (crmName() !== 'your CRM' ? ' and ' + esc(crmName()) : '') + ', so students receive an instant unofficial evaluation and your team receives the lead.</p></div>';
-    h += '<div><div class="eb">The Investment</div><h3>Quote</h3><div class="cards"><div class="card"><div class="ml">Quote ref.</div><div class="mv">' + esc(ref) + '</div></div><div class="card"><div class="ml">Issue date</div><div class="mv">' + esc(issue) + '</div></div><div class="card"><div class="ml">Expires</div><div class="mv">' + esc(exp) + '</div></div><div class="card"><div class="ml">Currency</div><div class="mv">USD</div></div></div>' +
+    h += '<div class="quote"><div><div class="eb">The Investment</div><h3>Quote</h3><div class="cards"><div class="card"><div class="ml">Quote ref.</div><div class="mv">' + esc(ref) + '</div></div><div class="card"><div class="ml">Issue date</div><div class="mv">' + esc(issue) + '</div></div><div class="card"><div class="ml">Expires</div><div class="mv">' + esc(exp) + '</div></div><div class="card"><div class="ml">Currency</div><div class="mv">USD</div></div></div>' +
       '<div class="cards two" style="margin-top:8px"><div class="card"><div class="ml">Seller</div><div class="pn">DegreeSight</div>1401 Lavaca St, Unit 41477<br>Austin, TX 78701, US<div class="ml" style="margin-top:6px">Contact</div>' + esc(rep) + (repMail ? ' (' + esc(repMail) + ')' : '') + '</div>' +
       '<div class="card"><div class="ml">Buyer</div><div class="pn">' + esc(inst) + '</div>' + lines(t.address).map(esc).join('<br>') + '<div class="ml" style="margin-top:6px">Contact</div>' + esc(t.contact || '') + '</div></div></div>';
     var showDisc = !!f.disc, cols = showDisc ? 4 : 2;
-    pd.opts.forEach(function (o) {
-      h += '<div><div class="option-head"><h3 style="margin:0">' + esc(o.name) + '</h3>' + (o.primary && pd.opts.length > 1 ? '<span class="primary">Primary option</span>' : '') + '</div>' +
+    pd.opts.forEach(function (o, oi) {
+      // The first option closes the .quote block (it stays on the quote page with its totals); each later option is its own unbreakable block.
+      h += '<div class="' + (oi ? 'quote-opt' : '') + '"><div class="option-head"><h3 style="margin:0">' + esc(o.name) + '</h3>' + (o.primary && pd.opts.length > 1 ? '<span class="primary">Primary option</span>' : '') + '</div>' +
         '<div class="cards three" style="margin:10px 0"><div class="card"><div class="ml">Effective date</div><div class="mv">' + esc(pd.effText === 'date of execution' ? 'Date of execution' : pd.effText) + '</div></div><div class="card"><div class="ml">Term length</div><div class="mv">' + o.years + ' year' + (o.years > 1 ? 's' : '') + '</div></div>' +
         (o.term > 12 ? '<div class="card"><div class="ml">Multi-year</div><span class="mybadge"><span class="coin">$</span>Multi-year pricing, locked for the term</span></div>' : '<div class="card"><div class="ml">Protected pricing</div><div class="mv">' + (o.prot ? 'Yes' : 'No') + '</div></div>') + '</div>';
-      h += '<table class="prod"><thead><tr><th>Products and Pricing</th>' + (showDisc ? '<th class="n">Market rate</th><th class="n">Your savings</th><th class="n">Your rate</th>' : '<th class="n">Price</th>') + '</tr></thead>';
+      h += '<table class="prod"><colgroup>' + (showDisc ? '<col style="width:46%"><col style="width:18%"><col style="width:18%"><col style="width:18%">' : '<col style="width:72%"><col style="width:28%">') + '</colgroup><thead><tr><th>Products and Pricing</th>' + (showDisc ? '<th class="n">Market rate</th><th class="n">Your savings</th><th class="n">Your rate</th>' : '<th class="n">Price</th>') + '</tr></thead>';
       var lastGrp = null, rows = o.rows;
       // By default the school sees one implementation fee; the breakdown stays internal unless the rep itemizes it.
       var one = rows.filter(function (r) { return r.oneTime; });
@@ -114,9 +136,13 @@ window.DSProposal = (function () {
         if (grp !== lastGrp && rows.some(function (x) { return !!x.oneTime !== !!r.oneTime; })) h += '<tbody><tr class="grp"><td colspan="' + cols + '">' + grp + '</td></tr></tbody>';
         lastGrp = grp;
         var name = r.key === 'Custom' ? (o.customName || 'Custom') : (NAME[r.key] || r.label), per = r.oneTime ? '' : ' / year';
-        var tag = r.conc ? ' <span class="conc">' + r.conc + '% off' + (r.reason ? ', ' + esc(r.reason) : '') + '</span>' : '';
+        // v2.3 one-page quote: the price cell carries only "N% off"; the reason goes on the billing line so the row stays short.
+        // With the discount columns shown, "Your savings" already carries it, so the percentage moves to the billing line too.
+        var tag = r.conc && !showDisc ? ' <span class="conc">' + r.conc + '% off</span>' : '';
+        var why = r.conc ? ' · Concession: ' + (showDisc ? r.conc + '% off' + (r.reason ? ', ' : '') : '') + esc(r.reason || '') : '';
+        if (r.conc && !showDisc && !r.reason) why = '';
         h += '<tbody><tr><td class="nm">' + esc(name) + '</td>' + (showDisc ? '<td class="n">' + money2(r.rt) + per + '</td><td class="n">' + (r.rt - r.q > 0.5 ? money2(r.rt - r.q) + per : '&mdash;') + '</td><td class="n">' + money2(r.q) + per + tag + '</td>' : '<td class="n">' + money2(r.q) + per + tag + '</td>') + '</tr>' +
-          '<tr class="desc"><td colspan="' + cols + '">' + sub(DESC[r.key] || '') + '</td></tr><tr class="bill"><td colspan="' + cols + '">Billing summary: ' + (r.oneTime ? 'Starts on effective date' : 'Starts on effective date, billed annually for ' + o.years + ' year' + (o.years > 1 ? 's' : '') + (o.varies ? '; the price changes by year (see the schedule below)' : '')) + '</td></tr></tbody>';
+          '<tr class="desc"><td colspan="' + cols + '">' + sub(DESC[r.key] || '') + '</td></tr><tr class="bill"><td colspan="' + cols + '">Billing summary: ' + (r.oneTime ? 'Starts on effective date' : 'Starts on effective date, billed annually for ' + o.years + ' year' + (o.years > 1 ? 's' : '') + (o.varies ? '; the price changes by year (see the schedule below)' : '')) + why + '</td></tr></tbody>';
       });
       h += '</table><div class="stats"><div class="stat"><div class="n">' + money(o.annual + o.oneTime) + '</div><div class="l">Year one total</div></div>' +
         (o.years > 1 && o.varies ? '<div class="stat"><div class="n">' + money(o.byYear[1]) + '</div><div class="l">Year two' + (o.years > 2 ? ' (schedule below)' : '') + '</div></div>' : o.years > 1 ? '<div class="stat"><div class="n">' + money(o.annual) + '</div><div class="l">Per year, years two' + (o.years > 2 ? ' to ' + o.years : '') + '</div></div>' : '<div class="stat"><div class="n">' + money(o.annual) + '</div><div class="l">Annual license total</div></div>') +
@@ -124,6 +150,7 @@ window.DSProposal = (function () {
       if (o.varies && o.byYear && o.byYear.length > 1) h += '<table class="prod yrsched"><thead><tr><th>Annual investment by year</th><th class="r">Licenses</th><th class="r">One-time</th><th class="r">Total</th></tr></thead><tbody>' + o.byYear.map(function (v, k) { return '<tr><td>Year ' + (k + 1) + '</td><td class="r">' + money(v) + '</td><td class="r">' + (k ? '' : money(o.oneTime)) + '</td><td class="r">' + money(v + (k ? 0 : o.oneTime)) + '</td></tr>'; }).join('') + '</tbody></table>';
       if (showDisc && o.retailAnnual - o.annual > 0.5) h += '<p style="margin-top:8px"><b>Total savings:</b> ' + money2((o.retailAnnual - o.annual) * o.years) + ' over the term.</p>';
       h += '</div>';
+      if (!oi) h += '</div>';
     });
     if (pd.note) h += '<div><div class="eb">Pricing note</div><p>' + esc(pd.note) + '</p></div>';
     h += '<div><div class="eb">Terms</div>';
@@ -132,9 +159,9 @@ window.DSProposal = (function () {
     h += '<h4>Payments</h4><p>Invoices are due within 30 days of notice. Client will incur a one percent (1%) increase in invoice for every 30 days beyond the first 60 days.</p><div>' + ['ACH (direct debit)'].concat(f.check ? ['Check'] : []).map(function (p) { return '<span class="chipp">' + esc(p) + '</span>'; }).join('') + '</div></div>';
     if (f.msa) {
       h += '<div id="msa-sec"><div class="eb">The Agreement</div><h3>Master Services Agreement</h3>' +
-        '<div class="msa-bar no-print"><button type="button" class="btn" id="msa-edit">Edit agreement text</button><button type="button" class="btn" id="msa-reset">Reset to verbatim (' + esc(MSA_VERSION) + ')</button><span id="msa-status">' + (msaModified(inst) ? '<span class="mod">Modified from the ' + esc(MSA_VERSION) + ' text. Legal review required before sending.</span>' : '<span class="ok">Verbatim ' + esc(MSA_VERSION) + ' text, only the client name and effective date substituted.</span>') + '</span></div>' +
+        '<div class="msa-bar no-print"><button type="button" class="btn" id="msa-edit">Edit agreement text</button><button type="button" class="btn" id="msa-reset">Reset to verbatim (' + esc(MSA_VERSION) + ')</button><span id="msa-status">' + (msaModified(inst) ? '<span class="mod">Modified from the ' + esc(MSA_VERSION) + ' text. Legal review required before sending.</span>' : '<span class="ok">Verbatim ' + esc(MSA_VERSION) + ' text, only the client name, effective date and billing contacts filled in.</span>') + '</span></div>' +
         '<div class="msa-toc no-print"><a href="#msa-part-msa">Master Services Agreement</a><a href="#msa-part-dpe">Data Processing Exhibit</a><a href="#msa-part-ferpa">FERPA Addendum</a></div>' +
-        '<div class="legal" id="msa-body">' + (X.msaEdited != null ? X.msaEdited : msaVerbatim(inst)) + '</div></div>';
+        '<div class="legal" id="msa-body">' + msaWithBilling(X.msaEdited != null ? X.msaEdited : msaVerbatim(inst)) + '</div></div>';
     }
     h += '<div><div class="eb">Signature</div><h3>Acceptance</h3><p>By signing below, the undersigned acknowledges that they have read and agree to the terms and conditions of this proposal and the appended agreement, and represents that they are duly authorized to execute it on behalf of ' + esc(inst) + '.</p><div class="sig"><div class="sigline">Signature</div><div class="sigline">Printed name</div><div class="sigline">Title</div><div class="sigline">Date</div></div></div>';
     h += '<div class="foot"><span><b>' + esc(rep) + '</b> · DegreeSight' + (repMail ? ' · ' + esc(repMail) : '') + '</span><span>' + esc(ref) + ' · valid through ' + esc(exp) + '</span></div></div>';
@@ -161,6 +188,15 @@ window.DSProposal = (function () {
       '<label>Buyer address (one line per row)<textarea class="t" data-pt="address" style="min-height:60px">' + esc(X.text.address) + '</textarea></label>' +
       '<button class="btn" type="button" id="pr-reset" style="justify-content:center">Refill from the intake</button>' +
       '<p class="hint" style="margin:0">Prefilled from the intake (items 9, 11, 13, 14) and the deal contacts. Edit the words before it goes out; they are saved with the intake.</p></div></div>' +
+      '<div class="card"><div class="card-h">Billing contacts</div><div class="card-b prop-edit">' +
+      [['primary', 'Billing contact'], ['alternate', 'Alternate billing contact']].map(function (p) {
+        var b = (X.billing || {})[p[0]] || {};
+        return '<div class="lbl" style="margin-top:2px">' + p[1] + '</div>' +
+          '<label>Name and title<input class="t" data-pb="' + p[0] + '.name_title" value="' + esc(b.name_title || '') + '"></label>' +
+          '<label>Email<input class="t" data-pb="' + p[0] + '.email" value="' + esc(b.email || '') + '"></label>' +
+          '<label>Phone<input class="t" data-pb="' + p[0] + '.phone" value="' + esc(b.phone || '') + '"></label>';
+      }).join('') +
+      '<p class="hint" style="margin:0">Goes in the MSA (end of Section 3, highlighted) so Accounting can set up invoicing. Fill only what the school confirmed (bursar, AP, business office); anything blank prints as a fill-in line for them to complete at signing.</p></div></div>' +
       '<p class="hint no-print">Pricing, terms and the effective date come from the Pricing calculator tab.</p></aside>';
     box.innerHTML = '<div class="calc-wrap prop-wrap">' + side + '<main class="calc-main"><div class="doc' + (X.ref && !stale() ? '' : ' draft') + '" id="proposal-doc">' + doc() + '</div></main></div>';
     wireMsa(inst);
@@ -174,12 +210,13 @@ window.DSProposal = (function () {
       body.setAttribute('contenteditable', on ? 'false' : 'true'); edit.classList.toggle('on', !on); edit.textContent = on ? 'Edit agreement text' : 'Done editing';
       if (on) render(); else body.focus();
     });
-    body.addEventListener('input', function () { X.msaEdited = body.innerHTML; if (host) host.dirty(); });
+    body.addEventListener('input', function () { X.msaEdited = stripBilling(body.innerHTML); if (host) host.dirty(); });
     reset.addEventListener('click', function () { X.msaEdited = null; if (host) host.dirty(); render(); });
   }
 
   function onInput(e) {
     var t = e.target;
+    if (t.matches('[data-pb]')) { var pk = t.getAttribute('data-pb').split('.'); X.billing = X.billing || {}; X.billing[pk[0]] = X.billing[pk[0]] || {}; X.billing[pk[0]][pk[1]] = t.value; if (host) host.dirty(); var db = $('proposal-doc'); if (db) { db.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } return; }
     if (t.matches('[data-pt]')) { X.text[t.getAttribute('data-pt')] = t.value; X.edited[t.getAttribute('data-pt')] = true; if (host) host.dirty(); var dd = $('proposal-doc'); if (dd) { dd.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } }
   }
   function onClick(e) {

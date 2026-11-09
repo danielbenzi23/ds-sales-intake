@@ -102,3 +102,18 @@ table.prod tr.grp td { padding: 14px 0 4px; font-weight: 700; font-size: 11px; l
 table.prod.yrsched { margin-top: 12px; }
 table.prod.yrsched td, table.prod.yrsched th { padding: 6px 0; }
 table.prod.yrsched .r { text-align: right; }
+
+/* Proposal skill v2.3 */
+/* One-page quote: the headline, reference panels, seller/buyer, products table and totals of the first option open a fresh page and never split. */
+.doc table.prod { table-layout: fixed; }
+.doc table.prod td.n, .doc table.prod th.n { white-space: nowrap; }
+.doc .rmnote { font-size: 11.5px; color: #64748B; }
+/* Billing Contacts block in MSA Section 3: highlighted for Accounting */
+.doc .legal .billing p { margin: 0 0 4px; }
+.doc .legal .billing p.bt { margin-top: 8px; }
+.doc .legal .billing .hl { background: #FFFF00; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@media print {
+  body.print-proposal .doc .quote { break-before: page; break-inside: avoid; }
+  body.print-proposal .doc .quote-opt { break-inside: avoid; }
+}
+.doc table.prod td.n .conc { display: block; white-space: normal; }
