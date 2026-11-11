@@ -132,3 +132,10 @@ table.prod.yrsched .r { text-align: right; }
 
 .prop-edit textarea.t.big { min-height: 180px; }
 .prop-edit textarea.t { resize: vertical; }
+
+/* extra proposal contacts */
+.xcontact { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.xcontact .xc-h { display: flex; gap: 8px; align-items: center; }
+.xcontact .xc-h select { flex: 1; }
+.doc .xc-line { margin-top: 4px; line-height: 1.35; }
+.doc .xc-line .ml { display: inline; margin-right: 4px; }

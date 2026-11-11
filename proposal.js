@@ -51,6 +51,33 @@ window.DSProposal = (function () {
     };
   }
 
+  // More than one person on the proposal (e.g. the signer and the primary end user). The first contact stays in "Buyer contact";
+  // each extra one has a role label and prints under it in the Buyer panel.
+  var ROLES = ['Signer', 'Primary end user', 'Billing', 'Technical contact', 'Other'];
+  function contactLine(c) { return [c.name_title, c.email].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' (') + (String(c.email || '').trim() && String(c.name_title || '').trim() ? ')' : ''); }
+  function extraContactsHtml() {
+    return (X.contacts || []).filter(function (c) { return contactLine(c); }).map(function (c) {
+      var role = c.role === 'Other' ? (String(c.roleOther || '').trim() || 'Contact') : (c.role || 'Contact');
+      return '<div class="xc-line"><span class="ml">' + esc(role) + '</span> ' + esc(contactLine(c)) + '</div>';
+    }).join('');
+  }
+  function contactsEditor() {
+    var dc = (D().contacts || []), used = {};
+    (X.contacts || []).forEach(function (c) { if (c.email) used[String(c.email).toLowerCase()] = true; });
+    var taken = [String(X.text.contact || '')].concat((X.contacts || []).map(function (c) { return String(c.name_title || '') + ' ' + String(c.email || ''); })).join(' | ').toLowerCase();
+    var avail = dc.filter(function (c) { var em = String(c.email || '').toLowerCase(), nm = String(c.name || '').trim().toLowerCase(); return !(em && (used[em] || taken.indexOf(em) >= 0)) && !(nm && taken.indexOf(nm) >= 0); });
+    var rows = (X.contacts || []).map(function (c, i) {
+      return '<div class="xcontact"><div class="xc-h"><select class="t" data-pc="' + i + '.role">' + ROLES.map(function (r) { return '<option' + (c.role === r ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select>' +
+        '<button type="button" class="linkbtn" data-rmcontact="' + i + '" title="Remove this contact">Remove</button></div>' +
+        (c.role === 'Other' ? '<label>Label<input class="t" data-pc="' + i + '.roleOther" value="' + esc(c.roleOther || '') + '" placeholder="e.g. Project lead"></label>' : '') +
+        '<label>Name and title<input class="t" data-pc="' + i + '.name_title" value="' + esc(c.name_title || '') + '"></label>' +
+        '<label>Email<input class="t" data-pc="' + i + '.email" value="' + esc(c.email || '') + '"></label></div>';
+    }).join('');
+    return rows +
+      (avail.length ? '<label>Add from the deal\'s HubSpot contacts<select class="t" id="pr-pickcontact"><option value="">Choose a contact…</option>' + avail.map(function (c) { var k = dc.indexOf(c); return '<option value="' + k + '">' + esc([c.name, c.title].filter(Boolean).join(', ')) + '</option>'; }).join('') + '</select></label>' : '') +
+      '<button class="btn" type="button" id="pr-addcontact" style="justify-content:center">+ Add another contact</button>';
+  }
+
   function fresh() { return { v: 1, text: defaults(), ref: '', issuedAt: '', expiresAt: '', generatedBy: '', pricingApprovedAt: '', msaEdited: null, edited: {} }; }
 
   function msaVerbatim(inst) {
@@ -117,7 +144,7 @@ window.DSProposal = (function () {
     h += '<div><div class="eb">Executive Summary</div><h3>Growing transfer at ' + esc(inst) + '</h3>' + (paras(t.summary).length > 1 ? paras(t.summary).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') : '<p>' + esc(t.summary) + '</p><p>DegreeSight will empower ' + esc(inst) + ' with a ' + esc(abbr) + '-branded transcript evaluation engine integrated with ' + esc(sisName()) + (crmName() !== 'your CRM' ? ' and ' + esc(crmName()) : '') + ', so students receive an instant unofficial evaluation and your team receives the lead.</p>') + '</div>';
     h += '<div class="quote"><div><div class="eb">The Investment</div><h3>Quote</h3><div class="cards"><div class="card"><div class="ml">Quote ref.</div><div class="mv">' + esc(ref) + '</div></div><div class="card"><div class="ml">Issue date</div><div class="mv">' + esc(issue) + '</div></div><div class="card"><div class="ml">Expires</div><div class="mv">' + esc(exp) + '</div></div><div class="card"><div class="ml">Currency</div><div class="mv">USD</div></div></div>' +
       '<div class="cards two" style="margin-top:8px"><div class="card"><div class="ml">Seller</div><div class="pn">DegreeSight</div>1401 Lavaca St, Unit 41477<br>Austin, TX 78701, US<div class="ml" style="margin-top:6px">Contact</div>' + esc(rep) + (repMail ? ' (' + esc(repMail) + ')' : '') + '</div>' +
-      '<div class="card"><div class="ml">Buyer</div><div class="pn">' + esc(inst) + '</div>' + lines(t.address).map(esc).join('<br>') + '<div class="ml" style="margin-top:6px">Contact</div>' + esc(t.contact || '') + '</div></div></div>';
+      '<div class="card"><div class="ml">Buyer</div><div class="pn">' + esc(inst) + '</div>' + lines(t.address).map(esc).join('<br>') + '<div class="ml" style="margin-top:6px">Contact</div>' + esc(t.contact || '') + extraContactsHtml() + '</div></div></div>';
     var showDisc = !!f.disc, cols = showDisc ? 4 : 2;
     pd.opts.forEach(function (o, oi) {
       // The first option closes the .quote block (it stays on the quote page with its totals); each later option is its own unbreakable block.
@@ -192,6 +219,7 @@ window.DSProposal = (function () {
       '<label>National trends (one per line)<textarea class="t" data-pt="trends">' + esc(X.text.trends || TRENDS) + '</textarea></label>' +
       '<label>Executive summary (a blank line between paragraphs)<textarea class="t big" data-pt="summary">' + esc(X.text.summary) + '</textarea></label>' +
       '<label>Buyer contact<input class="t" data-pt="contact" value="' + esc(X.text.contact) + '"></label>' +
+      contactsEditor() +
       '<label>Buyer address (one line per row)<textarea class="t" data-pt="address" style="min-height:60px">' + esc(X.text.address) + '</textarea></label>' +
       '<button class="btn" type="button" id="pr-reset" style="justify-content:center">Refill from the intake</button>' +
       '<p class="hint" style="margin:0">Prefilled from the intake (items 9, 11, 13, 14) and the deal contacts. Edit the words before it goes out; they are saved with the intake.</p></div></div>' +
@@ -283,6 +311,17 @@ window.DSProposal = (function () {
 
   function onInput(e) {
     var t = e.target;
+    if (t.id === 'pr-pickcontact') {
+      var dc = (D().contacts || [])[parseInt(t.value, 10)]; if (!dc) return;
+      X.contacts = X.contacts || []; X.contacts.push({ role: X.contacts.some(function (c) { return c.role === 'Signer'; }) ? 'Primary end user' : 'Signer', name_title: [dc.name, dc.title].filter(Boolean).join(', '), email: dc.email || '' });
+      if (host) host.dirty(); render(); return;
+    }
+    if (t.matches('[data-pc]')) {
+      var pc = t.getAttribute('data-pc').split('.'), ci = parseInt(pc[0], 10); X.contacts = X.contacts || []; if (!X.contacts[ci]) return;
+      X.contacts[ci][pc[1]] = t.value; if (host) host.dirty();
+      if (pc[1] === 'role') { render(); return; }
+      var dd2 = $('proposal-doc'); if (dd2) { dd2.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } return;
+    }
     if (t.matches('[data-rv]')) { if (!X.review || X.review.ref !== X.ref) X.review = { ref: X.ref, checks: {} }; X.review.checks = X.review.checks || {}; X.review.checks[t.getAttribute('data-rv')] = t.checked; if (host) host.dirty(); var rb = $('pr-reviewed'); if (rb) rb.disabled = !RV.every(function (x) { return X.review.checks[x[0]]; }); return; }
     if (t.matches('[data-pb]')) { var pk = t.getAttribute('data-pb').split('.'); X.billing = X.billing || {}; X.billing[pk[0]] = X.billing[pk[0]] || {}; X.billing[pk[0]][pk[1]] = t.value; if (host) host.dirty(); var db = $('proposal-doc'); if (db) { db.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } return; }
     if (t.matches('[data-pt]')) { X.text[t.getAttribute('data-pt')] = t.value; X.edited[t.getAttribute('data-pt')] = true; if (host) host.dirty(); var dd = $('proposal-doc'); if (dd) { dd.innerHTML = doc(); wireMsa((PD() || {}).inst || ''); } }
@@ -295,6 +334,8 @@ window.DSProposal = (function () {
     if (t.id === 'pr-reviewed') { var who = host ? host.who() : ''; if (!who) { if (host) host.needWho(); return; } X.review = Object.assign({}, X.review || {}, { ref: X.ref, by: who, at: new Date().toISOString() }); render(); attach(function () { if (host) host.save(); }); return; }
     if (t.id === 'pr-unreview') { if (X.review) { X.review.at = ''; X.review.by = ''; } if (host) host.dirty(); render(); return; }
     if (t.id === 'pr-askreview') { var who2 = host ? host.who() : ''; if (!who2) { if (host) host.needWho(); return; } if (!host || !host.askReview) return; t.disabled = true; t.textContent = 'Sending…'; host.askReview({ ref: X.ref, by: who2 }).then(function (r) { if (r && r.ok) { X.review = Object.assign({ ref: X.ref, checks: {} }, X.review || {}); X.review.asked = { ref: X.ref, at: new Date().toISOString(), by: who2 }; if (host) { host.dirty(); host.toast('Daniel got a Slack message with the link to this proposal.'); } } else if (host) host.toast((r && r.error) || 'Could not send the review request.'); render(); }); return; }
+    if (t.id === 'pr-addcontact') { X.contacts = X.contacts || []; X.contacts.push({ role: X.contacts.some(function (c) { return c.role === 'Signer'; }) ? 'Primary end user' : 'Signer', name_title: '', email: '' }); if (host) host.dirty(); render(); return; }
+    if (t.getAttribute && t.getAttribute('data-rmcontact') != null) { X.contacts.splice(parseInt(t.getAttribute('data-rmcontact'), 10), 1); if (host) host.dirty(); render(); return; }
     if (t.id === 'pr-ai') {
       if (drafting || !host || !host.draftHeard) return;
       var hasText = ['challenge', 'goals', 'summary'].some(function (k) { return X.edited[k]; });
