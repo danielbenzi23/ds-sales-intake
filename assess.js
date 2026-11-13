@@ -48,9 +48,7 @@ function assessIntake(v, today) {
   if (v.pop_same_systems === 'No') push('warn', 1, 'Populations on different systems (two CRMs forced two portals at JWU).');
   if (v.military === 'Read the JST (roadmap)') push('warn', 3, 'Reading the JST is roadmap: label it, no date, no price.');
   if (v.rules_exportable === 'No, they must be built') push('warn', 9, 'No exportable rules: rule-building goes on the timeline (Otis, St. John’s).');
-  if (v.parity === 'Full parity expected') push('warn', 14, 'Full parity expected: public equivalency search and historical catalog lookup are not things we replace.');
-  if (v.security_gates === 'Yes') push('warn', 15, 'Security review gates go-live: get the owner and date (TCU forced an emergency release).');
-  if (v.nonparity_written && v.nonparity_written !== 'Yes') push('warn', 17, 'Put the non-parity line in writing (verbal was worth nothing at GMU).');
+  if (v.security_gates === 'Yes') push('warn', 14, 'Security review gates go-live: get the owner and date (TCU forced an emergency release).');
   if (known(v.live_date)) {
     var now = today ? new Date(today) : new Date();
     var weeks = (new Date(v.live_date) - now) / (7 * 864e5);

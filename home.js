@@ -123,7 +123,7 @@
         var q = d.quote_ready ? 5 : (d.quote_missing == null ? null : 5 - d.quote_missing);
         var intake = d.saved_at ? '<span class="tag ok">Saved</span><div class="sub">by ' + esc(d.saved_by || 'unknown') + '</div>' : '<span class="tag mute">Not started</span>';
         if (!d.ai_ok) intake += '<div><span class="tag ai" title="The AI pre-fill did not run for this page yet">AI pre-fill pending</span></div>';
-        else if (!d.saved_at && d.coverage) intake += '<div class="sub">' + d.coverage + ' of 18 pre-filled</div>';
+        else if (!d.saved_at && d.coverage) intake += '<div class="sub">' + Math.min(d.coverage, 14) + ' of 14 pre-filled</div>';
         var qcell = q == null ? '<span class="sub">See intake</span>' : '<span class="qbar">' + [0, 1, 2, 3, 4].map(function (i) { return '<i' + (i < q ? ' class="on"' : '') + '></i>'; }).join('') + '</span>' + (d.quote_ready ? '<span class="tag ok">Ready</span>' : '<span class="sub">' + q + '/5</span>');
         if (d.specialist) qcell += '<div><span class="tag bad">Specialist</span></div>';
         var pcell = (d.pricing === 'approved' ? '<span class="tag ok">Approved</span>' + (d.pricing_by ? '<div class="sub">by ' + esc(d.pricing_by) + '</div>' : '') : d.pricing ? '<span class="tag warn">Draft</span>' : '<span class="sub">Not priced</span>') +

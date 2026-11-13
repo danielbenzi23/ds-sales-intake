@@ -130,6 +130,8 @@
     S.savedAt = data.saved_at || saved.savedAt || null; S.savedBy = data.saved_by || '';
     var draft = !demo && store.get('ds-intake-draft-' + DEAL);
     if (draft) { try { var d = JSON.parse(draft); if (d && d.ts && (!S.savedAt || d.ts > Date.parse(S.savedAt))) { S.values = d.values || S.values; S.origin = d.origin || S.origin; S.confirmed = d.confirmed || S.confirmed; S.notes = d.notes || S.notes; if (d.pricing) S.pricing = d.pricing; if (d.proposal) S.proposal = d.proposal; S.dirty = true; } } catch (e) { } }
+    // "Custom items" replaced "everything is live today": old answers (saved or from the AI) keep their meaning in the new wording.
+    var GA_MAP = { 'Confirmed': 'No custom items', 'Roadmap items present': 'Yes, on the roadmap' }; if (GA_MAP[S.values.all_ga]) S.values.all_ga = GA_MAP[S.values.all_ga];
     renderHeader(demo); renderApp(); DSCalc.load(S.pricing); DSProposal.load(S.proposal); renderSide(); setSaveState(); showView(START_VIEW);
   }
 
@@ -203,7 +205,7 @@
       (a.quoteReady ? '' : '<div class="script">If they ask for a quote first: "Hold on one second. For me to scope this properly, I have to ask you a few questions. Give me the basics and I’ll get you a quote."</div>') + '</div>';
     var nSpec = a.flags.filter(function (f) { return f.level === 'specialist'; }).length;
     left += DSDrawer.html('in-flags', 'Specialist on the next call?', a.flags.length ? (nSpec ? '<span class="warn-tag">' + nSpec + ' specialist</span> ' : '') + (a.flags.length - nSpec ? (a.flags.length - nSpec) + ' to watch' : '') : 'Routine', (a.flags.length ? '<ul class="flags">' + a.flags.map(function (f) { return '<li class="' + f.level + '"><span class="tag">' + (f.level === 'specialist' ? 'Bring a specialist' : 'Watch out') + ' · item ' + f.item + '</span>' + esc(f.text) + '</li>'; }).join('') + '</ul>' : '<p class="empty">Routine so far. Familiar stacks (Colleague on-prem + Slate, Banner + Slate with files in, J1 + standard Salesforce, PeopleSoft + Slate with files in) need no specialist.</p>'));
-    left += '<div class="card"><div class="card-h">Progress</div><div class="card-b"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>' + answered + ' of 18 have an answer</span><span>' + confirmedN + ' confirmed</span></div><div class="progress"><i style="width:' + Math.round(answered / 18 * 100) + '%"></i></div><ul class="nav">' +
+    left += '<div class="card"><div class="card-h">Progress</div><div class="card-b"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>' + answered + ' of ' + SPEC.sections.reduce(function (n, s) { return n + s.items.length; }, 0) + ' have an answer</span><span>' + confirmedN + ' confirmed</span></div><div class="progress"><i style="width:' + Math.round(answered / 18 * 100) + '%"></i></div><ul class="nav">' +
       SPEC.sections.map(function (s) { var n = s.items.filter(itemAnswered).length; return '<li><a href="#sec-' + s.id + '">' + esc(s.title) + '<b>' + n + '/' + s.items.length + '</b></a></li>'; }).join('') + '<li><a href="#sec-kickoff">Kickoff extras<b>PS</b></a></li></ul></div></div>';
     $('left').innerHTML = left;
 
@@ -293,6 +295,8 @@
       var parts = it.fields.filter(function (f) { return hasVal(S.values[f.key]); }).map(function (f) { var v = S.values[f.key]; return f.label + ': ' + (Array.isArray(v) ? v.join(', ') : v); });
       if (parts.length || S.notes[it.id]) lines.push(it.n + '. ' + it.title + (S.confirmed[it.id] ? ' [confirmed]' : '') + '\n   ' + parts.join('; ') + (S.notes[it.id] ? '\n   Notes: ' + S.notes[it.id] : ''));
     }); });
+    var nice = SPEC.kickoff.fields.filter(function (f) { return hasVal(S.values[f.key]); }).map(function (f) { var v = S.values[f.key]; return '   ' + f.label + ': ' + (Array.isArray(v) ? v.join(', ') : v); });
+    if (nice.length) { lines.push(''); lines.push('Nice to haves:'); lines = lines.concat(nice); }
     if (a.flags.length) { lines.push(''); lines.push('Flags:'); a.flags.forEach(function (f) { lines.push('- ' + (f.level === 'specialist' ? '[specialist] ' : '') + f.text); }); }
     lines = lines.concat(DSCalc.recapLines());
     return lines.join('\n');

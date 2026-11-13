@@ -94,7 +94,7 @@ window.DSCalc = (function () {
     if (docs.length) out.docs = docs.join('; ');
     var spec = (a.flags || []).filter(function (f) { return f.level === 'specialist'; });
     if (spec.length) out.integration = 'Install-base rules: ' + spec.map(function (f) { return f.text; }).join(' ');
-    if (v.all_ga === 'Roadmap items present') out.custom = 'Item 16: roadmap items in the proposal' + (v.roadmap_items ? ' (' + v.roadmap_items + ')' : '');
+    if (v.all_ga === 'Roadmap items present' || v.all_ga === 'Yes, on the roadmap' || v.all_ga === 'Yes, a new build') out.custom = 'Custom items: ' + (v.all_ga === 'Yes, a new build' ? 'a new build' : 'on the roadmap') + (v.roadmap_items ? ' (' + v.roadmap_items + ')' : '');
     return out;
   }
   // The intake only suggests scope; nothing is added until the rep ticks it.
