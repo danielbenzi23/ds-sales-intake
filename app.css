@@ -150,3 +150,10 @@ textarea.t { min-height: 38px; resize: vertical; }
 .guide .hint, .guide .say { margin-left: 0; }
 @media (max-width: 820px) { .guide { margin-left: 0; } }
 @media print { .guide { display: none; } }
+
+/* Unusual setup (AI-filled) */
+.odd-card .odd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.odd-card .odd-list li { font-size: 13.5px; line-height: 1.45; }
+.odd-topic { display: inline-block; font: 600 11px var(--font-body, inherit); text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: #EDE9FE; color: #5B21B6; margin-right: 6px; }
+.odd-ev { margin-top: 3px; font-size: 12px; color: var(--muted); }
+.odd-ev .ref { font-weight: 600; }

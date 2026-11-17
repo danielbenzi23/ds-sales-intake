@@ -58,8 +58,8 @@ function assessIntake(v, today) {
   var quote = {
     q1: known(v.pop_day1) && known(v.pop_diff_rules),
     q5: known(v.sis_name) && known(v.sis_hosting),
-    q7: known(v.wb_coursework) && known(v.wb_rules),
-    q8: known(v.golive_gate),
+    q7: known(v.integrate),
+    q8: (known(v.golive_gate)) || v.integrate === 'Not going to integrate',
     q13: known(v.live_definition) && known(v.live_date)
   };
   var quoteMissing = Object.keys(quote).filter(function (k) { return !quote[k]; });

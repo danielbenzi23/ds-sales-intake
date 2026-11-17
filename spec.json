@@ -249,71 +249,17 @@
           "id": "q7",
           "n": 7,
           "quote": true,
-          "title": "What they expect written back",
-          "hint": "We do reads plus create-only pushes to Colleague on-prem, Banner, PeopleSoft, nothing else yet. Documents landing in an imaging system (Perceptive, eTrieve, OnBase) is a separate project.",
-          "say": "When an evaluation is approved, do you expect it to be written into your SIS, or is this for your team to see and act on?",
+          "title": "Do they plan to integrate?",
+          "hint": "Only whether they integrate at all is needed up front. Leads out, which way data flows and SIS write-back get decided during implementation; they are in the nice to haves.",
+          "say": "Do you plan to connect DegreeSight to your SIS or CRM, or use it standalone for now?",
           "fields": [
             {
-              "key": "wb_leads",
-              "label": "Leads out to CRM",
+              "key": "integrate",
+              "label": "Do they plan to integrate DegreeSight with their SIS or CRM?",
               "type": "choice",
               "options": [
-                "Not needed",
-                "Wanted",
-                "Required for go-live",
-                "Unknown"
-              ]
-            },
-            {
-              "key": "wb_transcripts_in",
-              "label": "Transcripts in",
-              "type": "choice",
-              "options": [
-                "Not needed",
-                "Wanted",
-                "Required for go-live",
-                "Unknown"
-              ]
-            },
-            {
-              "key": "wb_coursework",
-              "label": "Evaluated coursework to the SIS",
-              "type": "choice",
-              "options": [
-                "Not needed",
-                "Wanted",
-                "Required for go-live",
-                "Unknown"
-              ]
-            },
-            {
-              "key": "wb_rules",
-              "label": "Equivalency rules back to the SIS",
-              "type": "choice",
-              "options": [
-                "Not needed",
-                "Wanted",
-                "Required for go-live",
-                "Unknown"
-              ]
-            },
-            {
-              "key": "wb_mode",
-              "label": "Create-only or update existing",
-              "type": "choice",
-              "options": [
-                "Create-only",
-                "Update existing",
-                "Unknown"
-              ]
-            },
-            {
-              "key": "wb_imaging",
-              "label": "Documents into an imaging system",
-              "type": "choice",
-              "options": [
-                "No",
-                "Yes (separate project)",
+                "Yes, planning to integrate",
+                "Not going to integrate",
                 "Unknown"
               ]
             }
@@ -624,6 +570,70 @@
           "Yes",
           "Verbal only",
           "Not yet"
+        ]
+      },
+      {
+        "key": "wb_leads",
+        "label": "Integration detail: leads out to CRM",
+        "type": "choice",
+        "options": [
+          "Not needed",
+          "Wanted",
+          "Required for go-live",
+          "Unknown"
+        ]
+      },
+      {
+        "key": "wb_transcripts_in",
+        "label": "Integration detail: transcripts in",
+        "type": "choice",
+        "options": [
+          "Not needed",
+          "Wanted",
+          "Required for go-live",
+          "Unknown"
+        ]
+      },
+      {
+        "key": "wb_coursework",
+        "label": "Integration detail: evaluated coursework to the SIS",
+        "type": "choice",
+        "options": [
+          "Not needed",
+          "Wanted",
+          "Required for go-live",
+          "Unknown"
+        ]
+      },
+      {
+        "key": "wb_rules",
+        "label": "Integration detail: equivalency rules back to the SIS",
+        "type": "choice",
+        "options": [
+          "Not needed",
+          "Wanted",
+          "Required for go-live",
+          "Unknown"
+        ]
+      },
+      {
+        "key": "wb_mode",
+        "label": "Integration detail: create-only or update existing",
+        "type": "choice",
+        "options": [
+          "Create-only",
+          "Update existing",
+          "Unknown"
+        ]
+      },
+      {
+        "key": "wb_imaging",
+        "label": "Integration detail: documents into an imaging system",
+        "type": "choice",
+        "options": [
+          "No",
+          "Yes (separate project)",
+          "Unknown"
         ]
       },
       {

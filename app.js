@@ -34,6 +34,17 @@
   }
   function hasVal(v) { return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length); }
   function itemAnswered(it) { return it.fields.some(function (f) { return hasVal(S.values[f.key]) && S.values[f.key] !== 'Unknown'; }); }
+  // Unusual setup: filled by the AI from calls and emails (unusual rules, integrations, student populations), no rep action,
+  // so Partner Success does not re-ask at kickoff. Read-only here; it also goes into the HubSpot recap and the Partner Success handoff.
+  function odditiesHtml() {
+    var od = (S.dossier.oddities || []);
+    var body = od.length ? '<ul class="odd-list">' + od.map(function (o) {
+      var ev = (o.evidence || []).map(function (e) { var s = srcByRef(e.ref); return '<div class="odd-ev"><span class="ref">' + esc(e.ref) + '</span> ' + (s && s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || e.ref) + '</a>' : esc((s && s.title) || '')) + (e.quote ? ': &ldquo;' + esc(e.quote) + '&rdquo;' : '') + '</div>'; }).join('');
+      return '<li><span class="odd-topic">' + esc(o.topic || 'Other') + '</span> ' + esc(o.detail || '') + ev + '</li>';
+    }).join('') + '</ul>' : '<p class="hint" style="margin:0">Nothing unusual found in the calls and emails yet. This fills itself when the page is built or refreshed from new calls.</p>';
+    return '<div class="sec-h" id="sec-oddities"><h2>Unusual setup (filled by the AI)</h2><span class="rule"></span></div>' +
+      '<div class="card odd-card"><div class="card-b"><p class="hint" style="margin:0 0 8px">Anything the school said about unusual rules, integrations or student populations, pulled from the calls and emails. Nothing to fill in here; it goes to Partner Success with the handoff.</p>' + body + '</div></div>';
+  }
   function srcByRef(ref) { return (S.dossier.sources || []).filter(function (s) { return s.ref === ref; })[0] || null; }
 
   function saveDraft() { if (!isDemo) store.set('ds-intake-draft-' + DEAL, JSON.stringify({ ts: Date.now(), values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, pricing: DSCalc.state(), proposal: DSProposal.state() })); }
@@ -132,6 +143,10 @@
     if (draft) { try { var d = JSON.parse(draft); if (d && d.ts && (!S.savedAt || d.ts > Date.parse(S.savedAt))) { S.values = d.values || S.values; S.origin = d.origin || S.origin; S.confirmed = d.confirmed || S.confirmed; S.notes = d.notes || S.notes; if (d.pricing) S.pricing = d.pricing; if (d.proposal) S.proposal = d.proposal; S.dirty = true; } } catch (e) { } }
     // "Custom items" replaced "everything is live today": old answers (saved or from the AI) keep their meaning in the new wording.
     var GA_MAP = { 'Confirmed': 'No custom items', 'Roadmap items present': 'Yes, on the roadmap' }; if (GA_MAP[S.values.all_ga]) S.values.all_ga = GA_MAP[S.values.all_ga];
+    // Item 7 is now "do they plan to integrate"; deals answered before keep their answer through the write-back details.
+    if (!S.values.integrate) { var WB = ['wb_leads', 'wb_transcripts_in', 'wb_coursework', 'wb_rules'], wbv = WB.map(function (k) { return S.values[k]; }).filter(function (x) { return x && x !== 'Unknown'; });
+      if (wbv.some(function (x) { return x === 'Wanted' || x === 'Required for go-live'; })) { S.values.integrate = 'Yes, planning to integrate'; S.origin.integrate = S.origin.wb_coursework || S.origin.wb_leads || 'ai'; }
+      else if (wbv.length >= 2 && wbv.every(function (x) { return x === 'Not needed'; })) { S.values.integrate = 'Not going to integrate'; S.origin.integrate = S.origin.wb_coursework || 'ai'; } }
     renderHeader(demo); renderApp(); DSCalc.load(S.pricing); DSProposal.load(S.proposal); renderSide(); setSaveState(); showView(START_VIEW);
   }
 
@@ -186,6 +201,7 @@
           '</section>';
       });
     });
+    html += odditiesHtml();
     html += '<div class="sec-h" id="sec-kickoff"><h2>' + esc(SPEC.kickoff.title) + '</h2><span class="rule"></span></div>';
     html += DSDrawer.html('in-kickoff', 'Kickoff extras for Partner Success', SPEC.kickoff.fields.filter(function (f) { return hasVal(S.values[f.key]); }).length + ' of ' + SPEC.kickoff.fields.length + ' filled', '<p class="hint" style="margin:0">' + esc(SPEC.kickoff.note) + '</p><div class="kick-grid">' + SPEC.kickoff.fields.map(fieldHtml).join('') + '</div>');
     html += DSDrawer.html('in-sayonce', 'Things to say once, in writing', '4 lines', '<ul class="say-once">' +
@@ -196,7 +212,7 @@
 
   function renderSide() {
     var a = assessIntake(S.values);
-    var names = { q1: 'Populations and rules', q5: 'SIS, hosting, replacement', q7: 'What they expect written back', q8: 'Integration gates go-live', q13: 'What live means, and the date' };
+    var names = { q1: 'Populations and rules', q5: 'SIS, hosting, replacement', q7: 'Do they plan to integrate', q8: 'Integration gates go-live', q13: 'What live means, and the date' };
     var nums = { q1: 1, q5: 5, q7: 7, q8: 8, q13: 13 };
     var answered = SPEC.sections.reduce(function (n, s) { return n + s.items.filter(itemAnswered).length; }, 0);
     var confirmedN = Object.keys(S.confirmed).filter(function (k) { return S.confirmed[k]; }).length;
@@ -206,7 +222,7 @@
     var nSpec = a.flags.filter(function (f) { return f.level === 'specialist'; }).length;
     left += DSDrawer.html('in-flags', 'Specialist on the next call?', a.flags.length ? (nSpec ? '<span class="warn-tag">' + nSpec + ' specialist</span> ' : '') + (a.flags.length - nSpec ? (a.flags.length - nSpec) + ' to watch' : '') : 'Routine', (a.flags.length ? '<ul class="flags">' + a.flags.map(function (f) { return '<li class="' + f.level + '"><span class="tag">' + (f.level === 'specialist' ? 'Bring a specialist' : 'Watch out') + ' · item ' + f.item + '</span>' + esc(f.text) + '</li>'; }).join('') + '</ul>' : '<p class="empty">Routine so far. Familiar stacks (Colleague on-prem + Slate, Banner + Slate with files in, J1 + standard Salesforce, PeopleSoft + Slate with files in) need no specialist.</p>'));
     left += '<div class="card"><div class="card-h">Progress</div><div class="card-b"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>' + answered + ' of ' + SPEC.sections.reduce(function (n, s) { return n + s.items.length; }, 0) + ' have an answer</span><span>' + confirmedN + ' confirmed</span></div><div class="progress"><i style="width:' + Math.round(answered / 18 * 100) + '%"></i></div><ul class="nav">' +
-      SPEC.sections.map(function (s) { var n = s.items.filter(itemAnswered).length; return '<li><a href="#sec-' + s.id + '">' + esc(s.title) + '<b>' + n + '/' + s.items.length + '</b></a></li>'; }).join('') + '<li><a href="#sec-kickoff">Kickoff extras<b>PS</b></a></li></ul></div></div>';
+      SPEC.sections.map(function (s) { var n = s.items.filter(itemAnswered).length; return '<li><a href="#sec-' + s.id + '">' + esc(s.title) + '<b>' + n + '/' + s.items.length + '</b></a></li>'; }).join('') + '<li><a href="#sec-oddities">Unusual setup<b>' + (S.dossier.oddities || []).length + '</b></a></li><li><a href="#sec-kickoff">Nice to haves<b>PS</b></a></li></ul></div></div>';
     $('left').innerHTML = left;
 
     var d = S.dossier, c = d.counts || {};
@@ -295,6 +311,8 @@
       var parts = it.fields.filter(function (f) { return hasVal(S.values[f.key]); }).map(function (f) { var v = S.values[f.key]; return f.label + ': ' + (Array.isArray(v) ? v.join(', ') : v); });
       if (parts.length || S.notes[it.id]) lines.push(it.n + '. ' + it.title + (S.confirmed[it.id] ? ' [confirmed]' : '') + '\n   ' + parts.join('; ') + (S.notes[it.id] ? '\n   Notes: ' + S.notes[it.id] : ''));
     }); });
+    var odd = (S.dossier.oddities || []).map(function (o) { return '   ' + (o.topic || 'Other') + ': ' + (o.detail || ''); });
+    if (odd.length) { lines.push(''); lines.push('Unusual setup (from calls and emails):'); lines = lines.concat(odd); }
     var nice = SPEC.kickoff.fields.filter(function (f) { return hasVal(S.values[f.key]); }).map(function (f) { var v = S.values[f.key]; return '   ' + f.label + ': ' + (Array.isArray(v) ? v.join(', ') : v); });
     if (nice.length) { lines.push(''); lines.push('Nice to haves:'); lines = lines.concat(nice); }
     if (a.flags.length) { lines.push(''); lines.push('Flags:'); a.flags.forEach(function (f) { lines.push('- ' + (f.level === 'specialist' ? '[specialist] ' : '') + f.text); }); }

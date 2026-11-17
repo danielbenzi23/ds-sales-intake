@@ -199,7 +199,7 @@ window.DSCalc = (function () {
   /* ---------- gate: what we need before a number goes out ---------- */
   function gate() {
     var a = host ? host.assess() : { quoteMissing: [], quoteReady: true };
-    var names = { q1: 'Item 1: populations and rules', q5: 'Item 5: SIS, hosting, replacement', q7: 'Item 7: what they expect written back', q8: 'Item 8: does integration gate go-live', q13: 'Item 13: what live means, and the date' };
+    var names = { q1: 'Item 1: populations and rules', q5: 'Item 5: SIS, hosting, replacement', q7: 'Item 7: do they plan to integrate', q8: 'Item 8: does integration gate go-live', q13: 'Item 13: what live means, and the date' };
     var lvl = scopeLevel(), prim = P.opts[P.primary], pt = prim ? totals(prim) : { rows: [] };
     var owner = !!(host && host.isOwner && host.isOwner());
     var checks = [
