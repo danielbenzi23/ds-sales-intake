@@ -44,6 +44,10 @@
     },
     "api/intake.js": {
       "maxDuration": 90
+    },
+    "api/handoff-pdf.js": {
+      "maxDuration": 90,
+      "memory": 2048
     }
   }
 }
