@@ -38,3 +38,7 @@
 .fb .sug .m { display: block; font-size: 12px; color: var(--muted); }
 .fb .gate .chips { margin-top: 12px; }
 .fb .gate .chip { padding: 8px 14px; font-size: 13.5px; }
+
+/* Embedded in the intake page Feedback widget */
+html.fb-embed header.top { display: none; }
+html.fb-embed body { background: #fff; }

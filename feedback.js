@@ -25,6 +25,10 @@
     ['other', 'Other', 'Anything else', []]
   ];
   var USER = null, S = { category: '', type: '', priority: 'Medium', company: null };
+  // Opened from the Feedback widget on an intake page (Nov 18 2026): same form, prefilled with the category, the tab and the page link.
+  var EMBED = params.get('embed') === '1';
+  if (EMBED) document.documentElement.classList.add('fb-embed');
+  (function () { var c = params.get('category') || '', ty = params.get('type') || '', ln = params.get('links') || ''; if (CATS.some(function (x) { return x[0] === c; })) { S.category = c; var cat = CATS.filter(function (x) { return x[0] === c; })[0]; if (cat[3].indexOf(ty) >= 0) S.type = ty; } if (ln || PRE.institution) S.text = { institution: PRE.institution, links: ln, description: '', expected: '' }; })();
   var SUG = { list: [], open: false, timer: null, seq: 0 };
 
   function gate(title, msg) {
