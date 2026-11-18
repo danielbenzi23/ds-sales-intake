@@ -139,3 +139,12 @@ table.prod.yrsched .r { text-align: right; }
 .xcontact .xc-h select { flex: 1; }
 .doc .xc-line { margin-top: 4px; line-height: 1.35; }
 .doc .xc-line .ml { display: inline; margin-right: 4px; }
+
+/* Custom instructions and redlines */
+.cx-list { margin: 0; padding-left: 18px; font-size: 12.5px; display: grid; gap: 4px; }
+.cx-list .cx-no { color: var(--amber, #b45309); }
+.cx-rev { display: grid; gap: 8px; }
+.cx-item { border: 1px solid var(--line, #e3e6ea); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; display: grid; gap: 3px; }
+.cx-v { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.cx-v.ok { background: #e7f6ec; color: #1d7a3e; } .cx-v.warn { background: #fff4e0; color: #a35b00; } .cx-v.no { background: #fde8e8; color: #b42318; }
+.cx-why { color: var(--muted, #5b6373); } .cx-resp { font-style: italic; }

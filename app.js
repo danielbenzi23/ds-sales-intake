@@ -105,6 +105,10 @@
       if (isDemo) return Promise.resolve({ ok: false, error: 'Demo page: the AI draft runs only on real deals.' });
       return api('heard', {});
     },
+    revise: function (p) {
+      if (isDemo) return Promise.resolve({ ok: false, error: 'Demo page: instructions and redlines run only on real deals.' });
+      return api('revise', p);
+    },
     askReview: function (p) {
       if (isDemo) return Promise.resolve({ ok: false, error: 'Demo page: review requests go out only on real deals.' });
       return api('review', { ref: p.ref, by: p.by, institution: (S.dossier.institution || {}).name || '', dealName: (S.dossier.deal || {}).name || '' });
@@ -178,6 +182,9 @@
       }).join('') + '</div>';
     } else if (f.type === 'date') {
       ctl = '<input class="t" type="date" data-k="' + f.key + '" value="' + esc(v || '') + '" style="max-width:200px">';
+      // Item 13 (Nov 18 2026): the rep can record that no date was confirmed yet. Kept as its own flag so the date stays a date;
+      // it does not count as answered for QUOTE.
+      if (f.key === 'live_date') { var tbd = S.values.live_date_tbd === 'No date confirmed yet'; ctl = '<div class="chips" style="align-items:center">' + ctl + '<button type="button" class="chip unk' + (tbd ? ' on' : '') + '" aria-pressed="' + tbd + '" data-tbd="live_date">No date confirmed yet</button></div>'; }
     } else {
       ctl = '<input class="t" type="text" data-k="' + f.key + '" value="' + esc(v || '') + '">';
     }
@@ -254,6 +261,13 @@
   }
 
   document.addEventListener('click', function (e) {
+    var tbdChip = e.target.closest('[data-tbd]');
+    if (tbdChip) {
+      var tk = tbdChip.getAttribute('data-tbd'), on2 = S.values[tk + '_tbd'] === 'No date confirmed yet';
+      S.values[tk + '_tbd'] = on2 ? '' : 'No date confirmed yet'; S.origin[tk + '_tbd'] = 'rep';
+      if (!on2) { S.values[tk] = ''; S.origin[tk] = 'rep'; }
+      touch(ITEM_OF[tk]); return;
+    }
     var chip = e.target.closest('.chip');
     if (chip) {
       var k = chip.getAttribute('data-k'), o = chip.getAttribute('data-o'), f = FIELDS[k];
@@ -271,6 +285,7 @@
   });
   document.addEventListener('input', function (e) {
     var t = e.target;
+    if (t.matches('input.t[data-k="live_date"]') && t.value && S.values.live_date_tbd) { S.values.live_date_tbd = ''; S.origin.live_date_tbd = 'rep'; var tc = document.querySelector('[data-tbd="live_date"]'); if (tc) { tc.classList.remove('on'); tc.setAttribute('aria-pressed', 'false'); } }
     if (t.matches('input.t[data-k]')) { S.values[t.getAttribute('data-k')] = t.value; S.origin[t.getAttribute('data-k')] = 'rep'; S.dirty = true; setSaveState(); renderSide(); if (!isDemo) saveDraft(); }
     if (t.matches('[data-note]')) { S.notes[t.getAttribute('data-note')] = t.value; S.dirty = true; setSaveState(); }
   });
@@ -309,6 +324,7 @@
     lines.push('');
     SPEC.sections.forEach(function (sec) { sec.items.forEach(function (it) {
       var parts = it.fields.filter(function (f) { return hasVal(S.values[f.key]); }).map(function (f) { var v = S.values[f.key]; return f.label + ': ' + (Array.isArray(v) ? v.join(', ') : v); });
+      if (it.id === 'q13' && S.values.live_date_tbd && !hasVal(S.values.live_date)) parts.push('The date that matters: No date confirmed yet');
       if (parts.length || S.notes[it.id]) lines.push(it.n + '. ' + it.title + (S.confirmed[it.id] ? ' [confirmed]' : '') + '\n   ' + parts.join('; ') + (S.notes[it.id] ? '\n   Notes: ' + S.notes[it.id] : ''));
     }); });
     var odd = (S.dossier.oddities || []).map(function (o) { return '   ' + (o.topic || 'Other') + ': ' + (o.detail || ''); });

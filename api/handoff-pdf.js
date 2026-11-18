@@ -66,6 +66,7 @@ function appendix(b) {
   const values = b.values || {}, notes = b.notes || {}, confirmed = b.confirmed || {}, ai = b.aiFields || {};
   const answerOf = f => {
     if (has(values[f.key])) return { text: fmt(values[f.key]), from: 'Rep' };
+    if (f.key === 'live_date' && has(values.live_date_tbd)) return { text: String(values.live_date_tbd), from: 'Rep' };
     const a = ai[f.key];
     if (a && has(a.value)) return { text: fmt(a.value), from: 'From calls and emails' + ((a.evidence || [])[0] && a.evidence[0].quote ? ': "' + String(a.evidence[0].quote).slice(0, 160) + '"' : '') };
     return null;
