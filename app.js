@@ -36,6 +36,23 @@
   function itemAnswered(it) { return it.fields.some(function (f) { return hasVal(S.values[f.key]) && S.values[f.key] !== 'Unknown'; }); }
   // Unusual setup: filled by the AI from calls and emails (unusual rules, integrations, student populations), no rep action,
   // so Partner Success does not re-ask at kickoff. Read-only here; it also goes into the HubSpot recap and the Partner Success handoff.
+  // Custom prompt and red lines (Nov 23 2026): the same box as the Proposal tab's card, here on the intake so the rep can
+  // write proposal instructions or paste the school's red lines while working the checklist. Same saved text, same actions.
+  function customBoxHtml() {
+    return '<div class="sec-h" id="sec-custom"><h2>Custom prompt and red lines</h2><span class="rule"></span></div>' +
+      '<section class="item" id="cx-intake"><p class="hint" style="margin:0 0 8px">Anything the proposal should change that is not a checklist answer (for example "remove the FERPA Addendum" or "add a line that invoices go to the bursar"), and the red lines the school sent back. The AI applies them to the proposal, or reviews the red lines for Woody and Drew. Pricing never changes here.</p>' +
+      '<label class="cx-l">Custom prompt for the proposal<textarea class="t" data-cxi="instructions" placeholder="e.g. Remove the FERPA Addendum. Add a line to Section 3 that invoices go to the bursar."></textarea></label>' +
+      '<label class="cx-l">Red lines the school sent (paste them)<textarea class="t big" data-cxi="redlines" placeholder="Paste the requested changes, tracked-change text or the school\'s email"></textarea></label>' +
+      '<div class="cx-btns"><button type="button" class="btn primary" data-cxrun="apply">&#10022; Apply to the proposal</button><button type="button" class="btn" data-cxrun="redlines">&#10022; Review red lines for Woody and Drew</button></div>' +
+      '<div id="cx-intake-res"></div></section>';
+  }
+  function fillCustomBox(withText) {
+    var box = document.getElementById('cx-intake'); if (!box || !window.DSProposal || !DSProposal.custom) return;
+    var c = DSProposal.custom() || {}, busy = DSProposal.customBusy ? DSProposal.customBusy() : '';
+    if (withText) box.querySelectorAll('[data-cxi]').forEach(function (t) { if (document.activeElement !== t) t.value = c[t.getAttribute('data-cxi')] || ''; });
+    box.querySelectorAll('[data-cxrun]').forEach(function (b) { var m = b.getAttribute('data-cxrun'); b.disabled = !!busy; b.innerHTML = busy === m ? (m === 'apply' ? 'Applying the changes…' : 'Reviewing the red lines…') : (m === 'apply' ? '&#10022; Apply to the proposal' : '&#10022; Review red lines for Woody and Drew'); });
+    var res = document.getElementById('cx-intake-res'); if (res) res.innerHTML = DSProposal.customResultsHtml ? DSProposal.customResultsHtml() : '';
+  }
   function odditiesHtml() {
     var od = (S.dossier.oddities || []);
     var body = od.length ? '<ul class="odd-list">' + od.map(function (o) {
@@ -62,7 +79,7 @@
   }
   function updateSteps() {
     if (!S.dossier || !window.DSCalc || !window.DSProposal) return;
-    var a = assessIntake(S.values), P = DSCalc.state(), g = DSCalc.gate ? DSCalc.gate() : null, ps = DSProposal.status ? DSProposal.status() : {};
+    var a = assessIntake(S.values, null, S.confirmed), P = DSCalc.state(), g = DSCalc.gate ? DSCalc.gate() : null, ps = DSProposal.status ? DSProposal.status() : {};
     var approved = !!(P && P.status === 'approved');
     var got = 5 - (a.quoteMissing || []).length;
     badge('intake', a.quoteReady ? 'QUOTE ✓' : got + '/5 QUOTE', a.quoteReady ? 'ok' : 'warn');
@@ -91,13 +108,15 @@
     document.querySelectorAll('[data-view]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-view') === v); });
     if (v === 'pricing') DSCalc.render();
     if (v === 'proposal') DSProposal.render();
+    if (v === 'intake') fillCustomBox(true);
     if (v === 'discovery') DSDiscovery.render();
     try { history.replaceState(null, '', location.pathname + location.search + (v === 'intake' ? '' : '#' + v)); } catch (e) { }
     stepsSoon();
   }
   document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); window.scrollTo({ top: 0 }); }); });
   var HOST = {
-    values: function () { return S.values; }, dossier: function () { return S.dossier; }, discovery: function () { return S.discovery; }, assess: function () { return assessIntake(S.values); },
+    customChanged: function () { fillCustomBox(false); renderSide(); },
+    values: function () { return S.values; }, dossier: function () { return S.dossier; }, discovery: function () { return S.discovery; }, assess: function () { return assessIntake(S.values, null, S.confirmed); },
     dirty: function () { S.dirty = true; setSaveState(); saveDraft(); }, save: function () { save(); },
     toast: function (m) { toast(m); },
     go: function (v, target) { goTo(v, target); },
@@ -151,7 +170,7 @@
     if (!S.values.integrate) { var WB = ['wb_leads', 'wb_transcripts_in', 'wb_coursework', 'wb_rules'], wbv = WB.map(function (k) { return S.values[k]; }).filter(function (x) { return x && x !== 'Unknown'; });
       if (wbv.some(function (x) { return x === 'Wanted' || x === 'Required for go-live'; })) { S.values.integrate = 'Yes, planning to integrate'; S.origin.integrate = S.origin.wb_coursework || S.origin.wb_leads || 'ai'; }
       else if (wbv.length >= 2 && wbv.every(function (x) { return x === 'Not needed'; })) { S.values.integrate = 'Not going to integrate'; S.origin.integrate = S.origin.wb_coursework || 'ai'; } }
-    renderHeader(demo); renderApp(); DSCalc.load(S.pricing); DSProposal.load(S.proposal); renderSide(); setSaveState(); showView(START_VIEW);
+    renderHeader(demo); renderApp(); DSCalc.load(S.pricing); DSProposal.load(S.proposal); fillCustomBox(true); renderSide(); setSaveState(); showView(START_VIEW);
   }
 
   function renderHeader(demo) {
@@ -209,6 +228,7 @@
       });
     });
     html += odditiesHtml();
+    html += customBoxHtml();
     html += '<div class="sec-h" id="sec-kickoff"><h2>' + esc(SPEC.kickoff.title) + '</h2><span class="rule"></span></div>';
     html += DSDrawer.html('in-kickoff', 'Kickoff extras for Partner Success', SPEC.kickoff.fields.filter(function (f) { return hasVal(S.values[f.key]); }).length + ' of ' + SPEC.kickoff.fields.length + ' filled', '<p class="hint" style="margin:0">' + esc(SPEC.kickoff.note) + '</p><div class="kick-grid">' + SPEC.kickoff.fields.map(fieldHtml).join('') + '</div>');
     html += DSDrawer.html('in-sayonce', 'Things to say once, in writing', '4 lines', '<ul class="say-once">' +
@@ -218,7 +238,7 @@
   }
 
   function renderSide() {
-    var a = assessIntake(S.values);
+    var a = assessIntake(S.values, null, S.confirmed);
     var names = { q1: 'Populations and rules', q5: 'SIS, hosting, replacement', q7: 'Do they plan to integrate', q8: 'Integration gates go-live', q13: 'What live means, and the date' };
     var nums = { q1: 1, q5: 5, q7: 7, q8: 8, q13: 13 };
     var answered = SPEC.sections.reduce(function (n, s) { return n + s.items.filter(itemAnswered).length; }, 0);
@@ -229,7 +249,7 @@
     var nSpec = a.flags.filter(function (f) { return f.level === 'specialist'; }).length;
     left += DSDrawer.html('in-flags', 'Specialist on the next call?', a.flags.length ? (nSpec ? '<span class="warn-tag">' + nSpec + ' specialist</span> ' : '') + (a.flags.length - nSpec ? (a.flags.length - nSpec) + ' to watch' : '') : 'Routine', (a.flags.length ? '<ul class="flags">' + a.flags.map(function (f) { return '<li class="' + f.level + '"><span class="tag">' + (f.level === 'specialist' ? 'Bring a specialist' : 'Watch out') + ' · item ' + f.item + '</span>' + esc(f.text) + '</li>'; }).join('') + '</ul>' : '<p class="empty">Routine so far. Familiar stacks (Colleague on-prem + Slate, Banner + Slate with files in, J1 + standard Salesforce, PeopleSoft + Slate with files in) need no specialist.</p>'));
     left += '<div class="card"><div class="card-h">Progress</div><div class="card-b"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>' + answered + ' of ' + SPEC.sections.reduce(function (n, s) { return n + s.items.length; }, 0) + ' have an answer</span><span>' + confirmedN + ' confirmed</span></div><div class="progress"><i style="width:' + Math.round(answered / 18 * 100) + '%"></i></div><ul class="nav">' +
-      SPEC.sections.map(function (s) { var n = s.items.filter(itemAnswered).length; return '<li><a href="#sec-' + s.id + '">' + esc(s.title) + '<b>' + n + '/' + s.items.length + '</b></a></li>'; }).join('') + '<li><a href="#sec-oddities">Unusual setup<b>' + (S.dossier.oddities || []).length + '</b></a></li><li><a href="#sec-kickoff">Nice to haves<b>PS</b></a></li></ul></div></div>';
+      SPEC.sections.map(function (s) { var n = s.items.filter(itemAnswered).length; return '<li><a href="#sec-' + s.id + '">' + esc(s.title) + '<b>' + n + '/' + s.items.length + '</b></a></li>'; }).join('') + '<li><a href="#sec-oddities">Unusual setup<b>' + (S.dossier.oddities || []).length + '</b></a></li>' + '<li><a href="#sec-custom">Custom prompt and red lines<b>' + ((DSProposal.custom && ((DSProposal.custom().instructions || '').trim() || (DSProposal.custom().redlines || '').trim())) ? '&#10003;' : '') + '</b></a></li><li><a href="#sec-kickoff">Nice to haves<b>PS</b></a></li></ul></div></div>';
     $('left').innerHTML = left;
 
     var d = S.dossier, c = d.counts || {};
@@ -261,6 +281,8 @@
   }
 
   document.addEventListener('click', function (e) {
+    var cxr = e.target.closest && e.target.closest('[data-cxrun]'); if (cxr) { DSProposal.runCustom(cxr.getAttribute('data-cxrun')); return; }
+    var cxg = e.target.closest && e.target.closest('[data-cxgo]'); if (cxg) { showView('proposal'); window.scrollTo(0, 0); return; }
     var tbdChip = e.target.closest('[data-tbd]');
     if (tbdChip) {
       var tk = tbdChip.getAttribute('data-tbd'), on2 = S.values[tk + '_tbd'] === 'No date confirmed yet';
@@ -284,6 +306,7 @@
     if (go) { var tgt = document.getElementById(go.getAttribute('data-go')); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
   document.addEventListener('input', function (e) {
+    if (e.target.matches && e.target.matches('[data-cxi]')) { DSProposal.setCustom(e.target.getAttribute('data-cxi'), e.target.value); touch(null); return; }
     var t = e.target;
     if (t.matches('input.t[data-k="live_date"]') && t.value && S.values.live_date_tbd) { S.values.live_date_tbd = ''; S.origin.live_date_tbd = 'rep'; var tc = document.querySelector('[data-tbd="live_date"]'); if (tc) { tc.classList.remove('on'); tc.setAttribute('aria-pressed', 'false'); } }
     if (t.matches('input.t[data-k]')) { S.values[t.getAttribute('data-k')] = t.value; S.origin[t.getAttribute('data-k')] = 'rep'; S.dirty = true; setSaveState(); renderSide(); if (!isDemo) saveDraft(); }
@@ -296,7 +319,7 @@
 
   function answersPayload() { return { values: S.values, origin: S.origin, confirmed: S.confirmed, notes: S.notes, pricing: DSCalc.state(), proposal: DSProposal.state(), savedAt: new Date().toISOString(), specVersion: SPEC.version }; }
   function save() {
-    var a = assessIntake(S.values), who = $('who').value.trim();
+    var a = assessIntake(S.values, null, S.confirmed), who = $('who').value.trim();
     if (!who) { $('who').focus(); toast('Add your name first, so the team knows who saved it.'); return; }
     if (isDemo) { store.set('ds-intake-demo', JSON.stringify(answersPayload())); S.dirty = false; S.savedAt = new Date().toISOString(); S.savedBy = who; setSaveState(); toast('Demo saved in this browser only.'); return; }
     $('b-save').disabled = true; $('b-save').textContent = 'Saving…';
@@ -318,7 +341,7 @@
   });
 
   function recapText() {
-    var a = assessIntake(S.values), d = S.dossier, lines = [];
+    var a = assessIntake(S.values, null, S.confirmed), d = S.dossier, lines = [];
     lines.push('Sales intake: ' + ((d.institution || {}).name || '') + (d.deal && d.deal.stageLabel ? ' (' + d.deal.stageLabel + ')' : ''));
     lines.push(a.quoteReady ? 'Ready to quote: all five QUOTE items answered.' : 'Not ready to quote. Missing: ' + a.quoteMissing.map(function (q) { return 'item ' + q.slice(1); }).join(', ') + '.');
     lines.push('');

@@ -157,3 +157,10 @@ textarea.t { min-height: 38px; resize: vertical; }
 .odd-topic { display: inline-block; font: 600 11px var(--font-body, inherit); text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: #EDE9FE; color: #5B21B6; margin-right: 6px; }
 .odd-ev { margin-top: 3px; font-size: 12px; color: var(--muted); }
 .odd-ev .ref { font-weight: 600; }
+
+/* Custom prompt and red lines on the intake (Nov 23 2026) */
+#cx-intake .cx-l { display: grid; gap: 4px; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+#cx-intake textarea.t { min-height: 70px; font-weight: 400; }
+#cx-intake textarea.t.big { min-height: 120px; }
+#cx-intake .cx-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+#cx-intake-res .lbl { margin-top: 8px; }

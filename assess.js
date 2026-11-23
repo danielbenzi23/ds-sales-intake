@@ -1,7 +1,9 @@
 // Shared rules from "The Sales Checklist: Before You Quote" v2.1 (install-base table and QUOTE items).
 // Used verbatim by the n8n dossier workflow and by the Vercel intake page.
-function assessIntake(v, today) {
-  v = v || {};
+// conf (optional): the items the rep marked "Confirmed with the school". A confirmed QUOTE item counts as answered even when
+// the answer is Unknown, because the topic was discussed with the school (Nov 23 2026).
+function assessIntake(v, today, conf) {
+  v = v || {}; conf = conf || {};
   var flags = [];
   var known = function (x) { return x !== undefined && x !== null && x !== '' && x !== 'Unknown' && !(Array.isArray(x) && !x.length); };
   var want = function (k) { return v[k] === 'Wanted' || v[k] === 'Required for go-live'; };
@@ -60,8 +62,10 @@ function assessIntake(v, today) {
     q5: known(v.sis_name) && known(v.sis_hosting),
     q7: known(v.integrate),
     q8: (known(v.golive_gate)) || v.integrate === 'Not going to integrate',
-    q13: known(v.live_definition) && known(v.live_date)
+    q13: known(v.live_definition) && (known(v.live_date) || v.live_date_tbd === 'No date confirmed yet')
   };
+  Object.keys(quote).forEach(function (k) { if (conf[k] === true) quote[k] = true; });
+  if (v.live_date_tbd === 'No date confirmed yet' && !known(v.live_date)) push('warn', 13, 'No live date confirmed yet: get the date before the proposal goes out, since the timeline is built from it.');
   var quoteMissing = Object.keys(quote).filter(function (k) { return !quote[k]; });
   return { flags: flags, quote: quote, quoteMissing: quoteMissing, quoteReady: quoteMissing.length === 0, specialistNeeded: flags.some(function (f) { return f.level === 'specialist'; }) };
 }

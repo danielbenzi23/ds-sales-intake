@@ -329,6 +329,25 @@ window.DSProposal = (function () {
     }
     return h + '</div></div>';
   }
+
+  // Shared by the Proposal tab card and the Sales intake tab box (Nov 23 2026).
+  function runCustom(mode) {
+    if (revising || !host || !host.revise) return Promise.resolve(null);
+    var c0 = cx(), inst0 = (PD() || {}).inst || (D().institution || {}).name || '';
+    if (mode === 'apply' && !String(c0.instructions || '').trim() && !String(c0.redlines || '').trim()) { host.toast('Write an instruction or paste the redlines first.'); return Promise.resolve(null); }
+    if (mode === 'redlines' && !String(c0.redlines || '').trim()) { host.toast('Paste the redlines the school sent first.'); return Promise.resolve(null); }
+    var whoR = host.who ? host.who() : '';
+    var blocks = Array.prototype.slice.call(msaBox(inst0).children).map(function (el, i) { return { i: i, text: el.textContent }; });
+    revising = mode; render(); if (host.customChanged) host.customChanged();
+    return host.revise({ mode: mode, instructions: c0.instructions || '', redlines: c0.redlines || '', blocks: blocks, fields: { challenge: X.text.challenge, goals: X.text.goals, trends: X.text.trends || TRENDS, summary: X.text.summary } }).then(function (r) {
+      revising = '';
+      if (r && r.ok && mode === 'apply') { var n = applyEdits(r, inst0, whoR); host.dirty(); host.toast(n ? n + ' change' + (n > 1 ? 's' : '') + ' applied. Read them in the proposal preview' + ((r.msa_edits || []).length ? '; the agreement now needs a legal review.' : '.') : 'Nothing was changed. See the list for why.'); }
+      else if (r && r.ok) { cx().review = { at: r.at || new Date().toISOString(), by: whoR, summary: r.summary, pricing_notes: r.pricing_notes, items: r.items }; host.dirty(); host.toast('Redline review ready.'); }
+      else host.toast((r && r.error) || 'That did not work. Try again.');
+      render(); if (host.customChanged) host.customChanged();
+      return r;
+    });
+  }
   function reviewText() {
     var c = cx(), rv = c.review || {}, inst = (PD() || {}).inst || (D().institution || {}).name || '';
     var out = ['Redline review: ' + inst, rv.summary || ''];
@@ -398,23 +417,7 @@ window.DSProposal = (function () {
     if (t.id === 'pr-askreview') { var who2 = host ? host.who() : ''; if (!who2) { if (host) host.needWho(); return; } if (!host || !host.askReview) return; t.disabled = true; t.textContent = 'Sending…'; host.askReview({ ref: X.ref, by: who2 }).then(function (r) { if (r && r.ok) { X.review = Object.assign({ ref: X.ref, checks: {} }, X.review || {}); X.review.asked = { ref: X.ref, at: new Date().toISOString(), by: who2 }; if (host) { host.dirty(); host.toast('Daniel got a Slack message with the link to this proposal.'); } } else if (host) host.toast((r && r.error) || 'Could not send the review request.'); render(); }); return; }
     if (t.id === 'pr-addcontact') { X.contacts = X.contacts || []; X.contacts.push({ role: X.contacts.some(function (c) { return c.role === 'Signer'; }) ? 'Primary end user' : 'Signer', name_title: '', email: '' }); if (host) host.dirty(); render(); return; }
     if (t.getAttribute && t.getAttribute('data-rmcontact') != null) { X.contacts.splice(parseInt(t.getAttribute('data-rmcontact'), 10), 1); if (host) host.dirty(); render(); return; }
-    if (t.id === 'pr-cx-apply' || t.id === 'pr-cx-review') {
-      if (revising || !host || !host.revise) return;
-      var mode = t.id === 'pr-cx-apply' ? 'apply' : 'redlines', c0 = cx(), inst0 = (PD() || {}).inst || (D().institution || {}).name || '';
-      if (mode === 'apply' && !String(c0.instructions || '').trim() && !String(c0.redlines || '').trim()) { host.toast('Write an instruction or paste the redlines first.'); return; }
-      if (mode === 'redlines' && !String(c0.redlines || '').trim()) { host.toast('Paste the redlines the school sent first.'); return; }
-      var whoR = host.who ? host.who() : '';
-      var blocks = Array.prototype.slice.call(msaBox(inst0).children).map(function (el, i) { return { i: i, text: el.textContent }; });
-      revising = mode; render();
-      host.revise({ mode: mode, instructions: c0.instructions || '', redlines: c0.redlines || '', blocks: blocks, fields: { challenge: X.text.challenge, goals: X.text.goals, trends: X.text.trends || TRENDS, summary: X.text.summary } }).then(function (r) {
-        revising = '';
-        if (r && r.ok && mode === 'apply') { var n = applyEdits(r, inst0, whoR); host.dirty(); host.toast(n ? n + ' change' + (n > 1 ? 's' : '') + ' applied. Read them in the preview' + ((r.msa_edits || []).length ? '; the agreement now needs a legal review.' : '.') : 'Nothing was changed. See the list for why.'); }
-        else if (r && r.ok) { cx().review = { at: r.at || new Date().toISOString(), by: whoR, summary: r.summary, pricing_notes: r.pricing_notes, items: r.items }; host.dirty(); host.toast('Redline review ready.'); }
-        else host.toast((r && r.error) || 'That did not work. Try again.');
-        render();
-      });
-      return;
-    }
+    if (t.id === 'pr-cx-apply' || t.id === 'pr-cx-review') { runCustom(t.id === 'pr-cx-apply' ? 'apply' : 'redlines'); return; }
     if (t.id === 'pr-cx-undo') { var u = cx().undo; if (!u) return; X.msaEdited = u.msaEdited; X.text = u.text; X.edited = u.edited; cx().undo = null; cx().applied = null; if (host) { host.dirty(); host.toast('Changes undone.'); } render(); return; }
     if (t.id === 'pr-cx-copy') { var txt = reviewText(); if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { if (host) host.toast('Copied. Paste it to Woody and Drew.'); }, function () { if (host) host.toast('Could not copy; select the text instead.'); }); return; }
     if (t.id === 'pr-ai') {
@@ -462,6 +465,11 @@ window.DSProposal = (function () {
     refreshDefaults: function () { if (!X || X.ref) return; var d = defaults(); Object.keys(d).forEach(function (k) { if (!X.edited[k]) X.text[k] = d[k]; }); },
     state: function () { return X; },
     status: function () { if (!X) return {}; var g = !!X.ref; return { generated: g, stale: g && stale(), reviewed: g && !stale() && reviewed(), attached: g && !stale() && attached(), ref: X.ref }; },
+    custom: function () { return X ? cx() : { instructions: '', redlines: '' }; },
+    setCustom: function (k, v) { if (!X) return; cx()[k] = v; },
+    runCustom: function (mode) { return X ? runCustom(mode) : Promise.resolve(null); },
+    customBusy: function () { return revising; },
+    customResultsHtml: function () { if (!X) return ''; var h = customCard(); var i = h.indexOf('<div class="lbl"'); return i < 0 ? '' : h.slice(i, h.lastIndexOf('</div></div>')).replace(/ id="pr-cx-(undo|copy)"/g, ' data-cxgo="proposal"').replace(/>Undo these changes</, '>Undo on the Proposal tab<').replace(/>Copy the review for Woody and Drew</, '>Copy on the Proposal tab<'); },
     summary: function () { if (!X || !X.ref) return null; var inst = (PD() || {}).inst || ''; return { ref: X.ref, issuedAt: X.issuedAt, expiresAt: X.expiresAt, generatedBy: X.generatedBy, stale: stale(), msaModified: msaModified(inst) }; },
     render: function () { if (X && !X.ref) this.refreshDefaults(); render(); }
   };
