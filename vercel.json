@@ -38,7 +38,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://degree-sight-rev-ops-dashboard-v2.vercel.app https://sales-rep-dashboard.vercel.app"
+          "value": "frame-ancestors 'self' https://degree-sight-rev-ops-dashboard-v2.vercel.app https://sales-rep-dashboard-psi.vercel.app"
         }
       ]
     }
